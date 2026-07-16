@@ -114,6 +114,7 @@ if not selected_data.empty:
                         <h4 style="color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 4px;">Modern Data</h4>
                         <p><strong>Family:</strong> {row['Family']}</p>
                         <p><strong>Modern Use:</strong> {row['Modern Use']}</p>
+                        <p><strong>Active Phytochemical:</strong> {row['Active Phytochemical']}</p>
                         <p><strong>Protein Target:</strong> {row['Protein Target']}</p>
                         <p><strong>PDB ID:</strong> {row['PDB ID']}</p>
                         <p style="word-break: break-all;"><strong>SMILES:</strong> {row['SMILES']}</p>
