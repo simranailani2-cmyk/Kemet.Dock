@@ -6,6 +6,9 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import base64
 from io import BytesIO
+from docking_engine import fetch_receptor, prepare_ligand, smart_cavity_finder, run_vina_docking
+
+
 
 st.set_page_config(
     page_title="Kemet Dock",
@@ -124,4 +127,29 @@ if not selected_data.empty:
         </div>
         """
 
+
         components.html(card_html, height=600, scrolling=True)
+
+        if st.button(f"Run Vina Docking for {row['Common Name']}", key=f"dock_{idx}"):
+            with st.spinner("Preparing docking pipeline..."):
+                pdb_id = row['PDB ID']
+                smiles = row['SMILES']
+
+                output_pdb = f"{pdb_id}.pdb"
+                st.write(f"Fetching receptor {pdb_id}...")
+                receptor_pdbqt = fetch_receptor(pdb_id, output_pdb)
+
+                st.write(f"Preparing ligand...")
+                ligand_pdbqt = prepare_ligand(smiles, "ligand.pdbqt")
+
+                if receptor_pdbqt and ligand_pdbqt:
+                    st.write(f"Finding cavity...")
+                    center, dims = smart_cavity_finder(output_pdb)
+
+                    st.write(f"Running AutoDock Vina...")
+                    vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims)
+
+                    st.success("Docking complete!")
+                    st.text_area("Vina Output", vina_output, height=300)
+                else:
+                    st.error("Failed to prepare receptor or ligand.")
