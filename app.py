@@ -177,7 +177,7 @@ if not selected_data.empty:
                                 break
 
                     if data:
-                        st.dataframe(pd.DataFrame(data))
+                        st.dataframe(pd.DataFrame(data), hide_index=True, use_container_width=False)
                     else:
                         st.error("Could not parse Vina output.")
                 else:
