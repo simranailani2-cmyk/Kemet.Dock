@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 from rdkit import Chem
@@ -122,4 +123,4 @@ if not selected_data.empty:
         </div>
         """
 
-        st.markdown(card_html, unsafe_allow_html=True)
+        components.html(card_html, height=600, scrolling=True)
