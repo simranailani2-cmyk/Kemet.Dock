@@ -150,6 +150,35 @@ if not selected_data.empty:
                     vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims)
 
                     st.success("Docking complete!")
-                    st.text_area("Vina Output", vina_output, height=300)
+
+                    # Parse vina_output
+                    lines = vina_output.split('\n')
+                    data = []
+                    parsing = False
+                    for line in lines:
+                        if line.startswith('-----+------------+----------+----------'):
+                            parsing = True
+                            continue
+                        if parsing:
+                            parts = line.split()
+                            if len(parts) == 4 and parts[0].isdigit():
+                                try:
+                                    mode = int(parts[0])
+                                    affinity = float(parts[1])
+                                    rmsd_ub = float(parts[3])
+                                    data.append({
+                                        'Binding Mode': mode,
+                                        'Affinity (kcal/mol)': affinity,
+                                        'RMSD': rmsd_ub
+                                    })
+                                except ValueError:
+                                    pass
+                            elif len(parts) == 0 or 'Writing' in line:
+                                break
+
+                    if data:
+                        st.dataframe(pd.DataFrame(data))
+                    else:
+                        st.error("Could not parse Vina output.")
                 else:
                     st.error("Failed to prepare receptor or ligand.")
