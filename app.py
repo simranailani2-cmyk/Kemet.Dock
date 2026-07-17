@@ -227,26 +227,31 @@ if not selected_data.empty:
                     receptor_data = f.read()
 
                 viewer_html = f'''
-                <div id="container-{idx}" style="height: 500px; width: 100%; position: relative;" class="viewer_3Dmoljs"
+                <div id="container-{idx}" style="height: 500px !important; width: 100% !important; display: block; position: relative;" class="viewer_3Dmoljs"
                      data-backgroundcolor="0xffffff" data-style="stick"></div>
                 <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
                 <script>
-                    var viewer = $3Dmol.createViewer("container-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
-                    var receptor_data = `{receptor_data}`;
-                    var ligand_data = `{selected_pose_str}`;
+                    var initViewer_{idx} = setInterval(function() {{
+                        if (typeof $3Dmol !== 'undefined') {{
+                            clearInterval(initViewer_{idx});
+                            var viewer = $3Dmol.createViewer("container-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
+                            var receptor_data = `{receptor_data}`;
+                            var ligand_data = `{selected_pose_str}`;
 
-                    viewer.addModel(receptor_data, "pdb");
-                    viewer.setStyle({{model: 0}}, {{cartoon: {{color: 'spectrum'}} }});
+                            viewer.addModel(receptor_data, "pdb");
+                            viewer.setStyle({{model: 0}}, {{cartoon: {{color: 'spectrum'}} }});
 
-                    if ({'true' if show_surface else 'false'}) {{
-                        viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
-                    }}
+                            if ({'true' if show_surface else 'false'}) {{
+                                viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
+                            }}
 
-                    viewer.addModel(ligand_data, "pdb");
-                    viewer.setStyle({{model: 1}}, {{stick: {{colorscheme: 'greenCarbon'}} }});
+                            viewer.addModel(ligand_data, "pdb");
+                            viewer.setStyle({{model: 1}}, {{stick: {{colorscheme: 'greenCarbon'}} }});
 
-                    viewer.zoomTo();
-                    viewer.render();
+                            viewer.zoomTo();
+                            viewer.render();
+                        }}
+                    }}, 100);
                 </script>
                 '''
                 components.html(viewer_html, height=550)
