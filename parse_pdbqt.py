@@ -51,20 +51,22 @@ def calc_interactions(ligand_lines, receptor_pdbqt):
     for i, (lx, ly, lz) in enumerate(ligand_atoms):
         for res, rx, ry, rz in receptor_atoms:
             dist = math.sqrt((lx-rx)**2 + (ly-ry)**2 + (lz-rz)**2)
-            if dist < 4.0:
+            if dist <= 4.0:
                 key = (res, i)
                 if key not in seen:
-                    # Simple heuristic for bond type (this could be improved by parsing atom types)
-                    bond_type = "Hydrogen Bond" if dist < 3.2 else "Hydrophobic / VDW"
+                    if dist < 3.5:
+                        bond_type = "Polar/H-Bond"
+                    else:
+                        bond_type = "Hydrophobic"
 
                     interactions.append({
                         "Receptor Residue": res,
                         "Ligand Atom": f"Atom {i+1}",
-                        "Bond Distance (Å)": round(dist, 2),
+                        "Distance": round(dist, 2),
                         "Bond Type": bond_type
                     })
                     seen.add(key)
 
     # Sort interactions by distance
-    interactions.sort(key=lambda x: x["Bond Distance (Å)"])
+    interactions.sort(key=lambda x: x["Distance"])
     return interactions
