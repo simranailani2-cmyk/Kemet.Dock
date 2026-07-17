@@ -240,8 +240,6 @@ if not selected_data.empty:
                 if interactions_data and isinstance(interactions_data, list) and all(isinstance(d, dict) and "Receptor Residue" in d for d in interactions_data):
                     interacting_res = list(set([d["Receptor Residue"] for d in interactions_data]))
                 else:
-                    if interactions_data is not None:
-                        st.warning("Docking interactions could not be fully resolved.")
                     interacting_res = []
 
                 col1, col2, col3 = st.columns(3)
@@ -249,24 +247,21 @@ if not selected_data.empty:
                 col2.metric("UFF Minimization Delta", f"{uff_delta:.2f} kcal/mol")
                 col3.metric("Interacting Residues", str(len(interacting_res)))
 
-                st.markdown("### Specific Receptor-Ligand Interactions")
+                st.write(f"Interacting receptor residues: {', '.join(interacting_res) if interacting_res else 'None'}")
+
+                st.markdown("### Interaction Analysis")
                 if interactions_data:
                     int_col1, int_col2 = st.columns([1, 1])
                     with int_col1:
                         st.dataframe(pd.DataFrame(interactions_data), hide_index=True)
                     with int_col2:
                         try:
-                            # Attempt to highlight interacting atoms on 2D map
                             mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
                             if mol:
                                 highlight_atoms = [int(d["Ligand Atom"].split(" ")[1]) - 1 for d in interactions_data]
-                                # Filter valid atom indices
                                 highlight_atoms = [a for a in highlight_atoms if a < mol.GetNumAtoms()]
                                 img = Draw.MolToImage(mol, highlightAtoms=highlight_atoms, size=(400, 400))
-                                buffered = BytesIO()
-                                img.save(buffered, format="PNG")
-                                img_b64 = base64.b64encode(buffered.getvalue()).decode()
-                                st.markdown(f'<img src="data:image/png;base64,{img_b64}" style="width: 100%; border-radius: 8px; border: 1px solid #e1e4e8;"/>', unsafe_allow_html=True)
+                                st.image(img)
                         except Exception as e:
                             st.write("2D interaction map unavailable.")
                 else:
@@ -317,18 +312,12 @@ if not selected_data.empty:
                 '''
                 components.html(viewer_html, height=550)
 
-                # Phases 2 and 3
+                # Phase 2 and 3: ADMET & Design
                 st.markdown("---")
-                st.header("Phase 2: Generative Scaffold Structural Redesign")
+                st.header("ADMET & Design")
                 smiles = st.session_state[f'smiles_{idx}']
                 variants = adme_profiler.generate_variants(smiles)
-                if variants:
-                    st.dataframe(pd.DataFrame({"Generated Structural Variants (SMILES)": variants}))
-                else:
-                    st.write("No structural variants generated for this molecule.")
 
-                st.markdown("---")
-                st.header("Phase 3: ADMET Profiling")
                 orig_adme = adme_profiler.get_admet(smiles)
                 adme_data = []
                 if orig_adme:
@@ -336,15 +325,25 @@ if not selected_data.empty:
                     adme_data.append(orig_adme)
 
                 if variants:
-                    # Just profile the first variant for comparison
                     var_adme = adme_profiler.get_admet(variants[0])
                     if var_adme:
-                        var_adme["Molecule"] = "Redesigned Variant 1"
+                        var_adme["Molecule"] = "Redesign Variant 1"
                         adme_data.append(var_adme)
 
                 if adme_data:
-                    # Move 'Molecule' to first column
                     df_adme = pd.DataFrame(adme_data)
                     cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
                     df_adme = df_adme[cols]
                     st.dataframe(df_adme, hide_index=True)
+
+                    # Side-by-side visual comparison
+                    comp_col1, comp_col2 = st.columns(2)
+                    with comp_col1:
+                        mol1 = Chem.MolFromSmiles(smiles)
+                        if mol1:
+                            st.image(Draw.MolToImage(mol1, size=(400, 400)), caption='Original Phytochemical')
+                    with comp_col2:
+                        if variants:
+                            mol2 = Chem.MolFromSmiles(variants[0])
+                            if mol2:
+                                st.image(Draw.MolToImage(mol2, size=(400, 400)), caption='Redesign Variant 1')

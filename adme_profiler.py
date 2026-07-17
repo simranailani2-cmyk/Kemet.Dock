@@ -67,9 +67,10 @@ def get_admet(smiles):
 
     # Toxicity screening via PAINS structural alerts
     alert_match = pains_catalog.GetFirstMatch(mol)
-    toxicity_alert = f"Alert: {alert_match.GetDescription()}" if alert_match else "Pass"
+    toxicity_alert = f"Alert: {alert_match.GetDescription()}" if alert_match else "Pass (0 Alerts)"
 
     return {
+        "SMILES": smiles,
         "Molecular Weight": round(mw, 2),
         "LogP": round(logp, 2),
         "TPSA": round(tpsa, 2),
