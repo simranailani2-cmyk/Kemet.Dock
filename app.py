@@ -221,6 +221,14 @@ if not selected_data.empty:
 
                 # 3Dmol.js rendering
                 st.markdown("### 3D Interaction Viewer")
+
+                style_options = ['cartoon', 'sphere', 'stick', 'line', 'cross']
+                style_col1, style_col2 = st.columns(2)
+                with style_col1:
+                    receptor_style = st.selectbox("Receptor Style", style_options, index=0, key=f"rec_style_{idx}")
+                with style_col2:
+                    ligand_style = st.selectbox("Ligand Style", style_options, index=2, key=f"lig_style_{idx}")
+
                 show_surface = st.checkbox("Show Pocket Cavity Mesh", value=True, key=f"surf_{idx}")
 
                 with open(receptor_pdbqt, 'r') as f:
@@ -239,14 +247,14 @@ if not selected_data.empty:
                             var ligand_data = `{selected_pose_str}`;
 
                             viewer.addModel(receptor_data, "pdb");
-                            viewer.setStyle({{model: 0}}, {{cartoon: {{color: 'spectrum'}} }});
+                            viewer.setStyle({{model: 0}}, {{{receptor_style}: {{color: 'spectrum'}} }});
 
                             if ({'true' if show_surface else 'false'}) {{
                                 viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
                             }}
 
                             viewer.addModel(ligand_data, "pdb");
-                            viewer.setStyle({{model: 1}}, {{stick: {{colorscheme: 'greenCarbon'}} }});
+                            viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
                             viewer.zoomTo();
                             viewer.render();
