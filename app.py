@@ -1,3 +1,4 @@
+import urllib.parse
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -136,7 +137,7 @@ if not selected_data.empty:
         """
 
 
-        components.html(card_html, height=600, scrolling=True)
+        components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(card_html)}', height=600, scrolling=True)
 
         # Add a setup expander for Grid Box controls
         with st.expander(f"Docking Setup for {row['Common Name']}", expanded=True):
@@ -333,7 +334,7 @@ if not selected_data.empty:
                     }}, 100);
                 </script>
                 '''
-                components.html(viewer_html, height=550)
+                components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html)}', height=550)
 
                 # Phase 2 and 3: ADMET & Design
                 st.markdown("---")
