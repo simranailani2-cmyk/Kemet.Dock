@@ -1,4 +1,5 @@
 import math
+import pandas as pd
 
 def extract_poses(pdbqt_file):
     poses = []
@@ -62,11 +63,11 @@ def calc_interactions(ligand_lines, receptor_pdbqt):
                     interactions.append({
                         "Receptor Residue": res,
                         "Ligand Atom": f"Atom {i+1}",
-                        "Distance": round(dist, 2),
+                        "Distance (Å)": round(dist, 2),
                         "Bond Type": bond_type
                     })
                     seen.add(key)
 
     # Sort interactions by distance
-    interactions.sort(key=lambda x: x["Distance"])
-    return interactions
+    interactions.sort(key=lambda x: x["Distance (Å)"])
+    return pd.DataFrame(interactions)
