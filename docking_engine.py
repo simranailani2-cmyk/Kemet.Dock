@@ -120,30 +120,22 @@ def prepare_ligand(smiles, output_pdbqt):
     return output_pdbqt, uff_delta
 
 def smart_cavity_finder(pdb_file):
-    coords = []
-    with open(pdb_file, 'r') as f:
-        for line in f:
-            if line.startswith("ATOM") or line.startswith("HETATM"):
-                try:
-                    x = float(line[30:38].strip())
-                    y = float(line[38:46].strip())
-                    z = float(line[46:54].strip())
-                    coords.append([x, y, z])
-                except ValueError:
-                    continue
+    try:
+        mol = Chem.MolFromPDBFile(pdb_file, sanitize=False)
+        if mol:
+            conf = mol.GetConformer()
+            coords = conf.GetPositions()
+            if len(coords) > 0:
+                center = np.mean(coords, axis=0)
+                mins = np.min(coords, axis=0)
+                maxs = np.max(coords, axis=0)
+                dims = maxs - mins
+                dims = np.clip(dims, a_min=10.0, a_max=60.0)
+                return [float(c) for c in center], [float(d) for d in dims]
+    except Exception as e:
+        print(f"Error parsing PDB for cavity: {e}")
 
-    if not coords:
-        return [0, 0, 0], [20, 20, 20]
-
-    coords = np.array(coords)
-    center = np.mean(coords, axis=0)
-    mins = np.min(coords, axis=0)
-    maxs = np.max(coords, axis=0)
-
-    dims = maxs - mins
-    dims = np.clip(dims, a_min=None, a_max=60)
-
-    return center, dims
+    return [0.0, 0.0, 0.0], [20.0, 20.0, 20.0]
 
 def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims):
     vina_path = download_vina_executable()
