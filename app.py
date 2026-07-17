@@ -182,41 +182,41 @@ if not selected_data.empty:
                             st.success("Docking complete!")
 
                             # Parse vina_output
-                    lines = vina_output.split('\n')
-                    data = []
-                    parsing = False
-                    for line in lines:
-                        if line.startswith('-----+------------+----------+----------'):
-                            parsing = True
-                            continue
-                        if parsing:
-                            parts = line.split()
-                            if len(parts) == 4 and parts[0].isdigit():
-                                try:
-                                    mode = int(parts[0])
-                                    affinity = float(parts[1])
-                                    rmsd_ub = float(parts[3])
-                                    data.append({
-                                        'Binding Mode': mode,
-                                        'Affinity (kcal/mol)': affinity,
-                                        'RMSD': rmsd_ub
-                                    })
-                                except ValueError:
-                                    pass
-                            elif len(parts) == 0 or 'Writing' in line:
-                                break
+                            lines = vina_output.split('\n')
+                            data = []
+                            parsing = False
+                            for line in lines:
+                                if line.startswith('-----+------------+----------+----------'):
+                                    parsing = True
+                                    continue
+                                if parsing:
+                                    parts = line.split()
+                                    if len(parts) == 4 and parts[0].isdigit():
+                                        try:
+                                            mode = int(parts[0])
+                                            affinity = float(parts[1])
+                                            rmsd_ub = float(parts[3])
+                                            data.append({
+                                                'Binding Mode': mode,
+                                                'Affinity (kcal/mol)': affinity,
+                                                'RMSD': rmsd_ub
+                                            })
+                                        except ValueError:
+                                            pass
+                                    elif len(parts) == 0 or 'Writing' in line:
+                                        break
 
-                    if data:
-                        st.dataframe(pd.DataFrame(data), hide_index=True, use_container_width=False)
-                        st.session_state[f'docking_data_{idx}'] = data
-                        st.session_state[f'docking_done_{idx}'] = True
-                        st.session_state[f'pdb_id_{idx}'] = pdb_id
-                        st.session_state[f'smiles_{idx}'] = smiles
-                        st.session_state[f'uff_delta_{idx}'] = uff_delta
-                    else:
-                        st.error("Could not parse Vina output.")
-                else:
-                    st.error("Failed to prepare receptor or ligand.")
+                            if data:
+                                st.dataframe(pd.DataFrame(data), hide_index=True, use_container_width=False)
+                                st.session_state[f'docking_data_{idx}'] = data
+                                st.session_state[f'docking_done_{idx}'] = True
+                                st.session_state[f'pdb_id_{idx}'] = pdb_id
+                                st.session_state[f'smiles_{idx}'] = smiles
+                                st.session_state[f'uff_delta_{idx}'] = uff_delta
+                            else:
+                                st.error("Could not parse Vina output.")
+                        else:
+                            st.error("Failed to prepare receptor or ligand.")
 
 
         if st.session_state.get(f'docking_done_{idx}', False):
@@ -236,7 +236,13 @@ if not selected_data.empty:
                 uff_delta = st.session_state.get(f'uff_delta_{idx}', 0.0)
                 receptor_pdbqt = f"{st.session_state[f'pdb_id_{idx}']}.pdbqt"
                 interactions_data = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
-                interacting_res = list(set([d["Receptor Residue"] for d in interactions_data]))
+
+                if interactions_data and isinstance(interactions_data, list) and all(isinstance(d, dict) and "Receptor Residue" in d for d in interactions_data):
+                    interacting_res = list(set([d["Receptor Residue"] for d in interactions_data]))
+                else:
+                    if interactions_data is not None:
+                        st.warning("Docking interactions could not be fully resolved.")
+                    interacting_res = []
 
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Pose Affinity", f"{selected_mode_data['Affinity (kcal/mol)']} kcal/mol")
