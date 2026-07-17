@@ -8,6 +8,10 @@ import base64
 from io import BytesIO
 from docking_engine import fetch_receptor, prepare_ligand, smart_cavity_finder, run_vina_docking
 
+import parse_pdbqt
+import adme_profiler
+
+
 
 
 st.set_page_config(
@@ -140,7 +144,7 @@ if not selected_data.empty:
                 receptor_pdbqt = fetch_receptor(pdb_id, output_pdb)
 
                 st.write(f"Preparing ligand...")
-                ligand_pdbqt = prepare_ligand(smiles, "ligand.pdbqt")
+                ligand_pdbqt, uff_delta = prepare_ligand(smiles, "ligand.pdbqt")
 
                 if receptor_pdbqt and ligand_pdbqt:
                     st.write(f"Finding cavity...")
@@ -178,7 +182,103 @@ if not selected_data.empty:
 
                     if data:
                         st.dataframe(pd.DataFrame(data), hide_index=True, use_container_width=False)
+                        st.session_state[f'docking_data_{idx}'] = data
+                        st.session_state[f'docking_done_{idx}'] = True
+                        st.session_state[f'pdb_id_{idx}'] = pdb_id
+                        st.session_state[f'smiles_{idx}'] = smiles
+                        st.session_state[f'uff_delta_{idx}'] = uff_delta
                     else:
                         st.error("Could not parse Vina output.")
                 else:
                     st.error("Failed to prepare receptor or ligand.")
+
+
+        if st.session_state.get(f'docking_done_{idx}', False):
+            st.markdown("### Select Docking Pose")
+            data = st.session_state[f'docking_data_{idx}']
+            options = [f"Mode {d['Binding Mode']} (Affinity: {d['Affinity (kcal/mol)']} kcal/mol)" for d in data]
+            selected_mode_str = st.selectbox("Generated Poses", options, key=f"pose_select_{idx}")
+            selected_idx = options.index(selected_mode_str)
+            selected_mode_data = data[selected_idx]
+
+            poses = parse_pdbqt.extract_poses("ligand_out.pdbqt")
+
+            if poses and selected_idx < len(poses):
+                selected_pose_str = poses[selected_idx]
+
+                # Metric Card
+                uff_delta = st.session_state.get(f'uff_delta_{idx}', 0.0)
+                receptor_pdbqt = f"{st.session_state[f'pdb_id_{idx}']}.pdbqt"
+                interacting_res = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
+
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Pose Affinity", f"{selected_mode_data['Affinity (kcal/mol)']} kcal/mol")
+                col2.metric("UFF Minimization Delta", f"{uff_delta:.2f} kcal/mol")
+                col3.metric("Interacting Residues", str(len(interacting_res)))
+
+                st.markdown("**Specific Interacting Amino Acid Residues:**")
+                st.write(", ".join(interacting_res))
+
+                # 3Dmol.js rendering
+                st.markdown("### 3D Interaction Viewer")
+                show_surface = st.checkbox("Show Pocket Cavity Mesh", value=True, key=f"surf_{idx}")
+
+                with open(receptor_pdbqt, 'r') as f:
+                    receptor_data = f.read()
+
+                viewer_html = f'''
+                <div id="container-{idx}" style="height: 500px; width: 100%; position: relative;" class="viewer_3Dmoljs"
+                     data-backgroundcolor="0xffffff" data-style="stick"></div>
+                <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+                <script>
+                    var viewer = $3Dmol.createViewer("container-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
+                    var receptor_data = `{receptor_data}`;
+                    var ligand_data = `{selected_pose_str}`;
+
+                    viewer.addModel(receptor_data, "pdb");
+                    viewer.setStyle({{model: 0}}, {{cartoon: {{color: 'spectrum'}} }});
+
+                    if ({'true' if show_surface else 'false'}) {{
+                        viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
+                    }}
+
+                    viewer.addModel(ligand_data, "pdb");
+                    viewer.setStyle({{model: 1}}, {{stick: {{colorscheme: 'greenCarbon'}} }});
+
+                    viewer.zoomTo();
+                    viewer.render();
+                </script>
+                '''
+                components.html(viewer_html, height=550)
+
+                # Phases 2 and 3
+                st.markdown("---")
+                st.header("Phase 2: Generative Scaffold Structural Redesign")
+                smiles = st.session_state[f'smiles_{idx}']
+                variants = adme_profiler.generate_variants(smiles)
+                if variants:
+                    st.dataframe(pd.DataFrame({"Generated Structural Variants (SMILES)": variants}))
+                else:
+                    st.write("No structural variants generated for this molecule.")
+
+                st.markdown("---")
+                st.header("Phase 3: ADMET Profiling")
+                orig_adme = adme_profiler.get_admet(smiles)
+                adme_data = []
+                if orig_adme:
+                    orig_adme["Molecule"] = "Original Phytochemical"
+                    adme_data.append(orig_adme)
+
+                if variants:
+                    # Just profile the first variant for comparison
+                    var_adme = adme_profiler.get_admet(variants[0])
+                    if var_adme:
+                        var_adme["Molecule"] = "Redesigned Variant 1"
+                        adme_data.append(var_adme)
+
+                if adme_data:
+                    # Move 'Molecule' to first column
+                    df_adme = pd.DataFrame(adme_data)
+                    cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
+                    df_adme = df_adme[cols]
+                    st.dataframe(df_adme, hide_index=True)

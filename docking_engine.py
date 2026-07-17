@@ -37,6 +37,16 @@ def fetch_receptor(pdb_id, output_pdb):
             elif element == 'O': ad_type = 'OA'
             elif element == 'S': ad_type = 'SA'
             elif element == 'P': ad_type = 'P'
+            elif element == 'CL': ad_type = 'Cl'
+            elif element == 'BR': ad_type = 'Br'
+            elif element == 'F': ad_type = 'F'
+            elif element == 'I': ad_type = 'I'
+            elif element == 'FE': ad_type = 'Fe'
+            elif element == 'ZN': ad_type = 'Zn'
+            elif element == 'CA': ad_type = 'Ca'
+            elif element == 'MG': ad_type = 'Mg'
+            elif element == 'MN': ad_type = 'Mn'
+
             new_line = line[:66].ljust(66) + "    +0.000 " + ad_type.ljust(2)
             lines.append(new_line)
 
@@ -47,9 +57,10 @@ def fetch_receptor(pdb_id, output_pdb):
     return pdbqt_output
 
 def prepare_ligand(smiles, output_pdbqt):
+    uff_delta = 0.0
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
-        return None
+        return None, 0.0
 
     mol = Chem.AddHs(mol)
     AllChem.EmbedMolecule(mol, AllChem.ETKDGv3())
@@ -57,7 +68,12 @@ def prepare_ligand(smiles, output_pdbqt):
     # Memory-safe UFF minimization
     if mol.GetNumAtoms() <= 4000:
         try:
-            AllChem.UFFOptimizeMolecule(mol)
+            ff = AllChem.UFFGetMoleculeForceField(mol)
+            if ff:
+                e1 = ff.CalcEnergy()
+                ff.Minimize()
+                e2 = ff.CalcEnergy()
+                uff_delta = e1 - e2
         except Exception as e:
             print(f"UFF optimization failed: {e}")
             pass
@@ -84,6 +100,16 @@ def prepare_ligand(smiles, output_pdbqt):
             elif element == 'O': ad_type = 'OA'
             elif element == 'S': ad_type = 'SA'
             elif element == 'P': ad_type = 'P'
+            elif element == 'CL': ad_type = 'Cl'
+            elif element == 'BR': ad_type = 'Br'
+            elif element == 'F': ad_type = 'F'
+            elif element == 'I': ad_type = 'I'
+            elif element == 'FE': ad_type = 'Fe'
+            elif element == 'ZN': ad_type = 'Zn'
+            elif element == 'CA': ad_type = 'Ca'
+            elif element == 'MG': ad_type = 'Mg'
+            elif element == 'MN': ad_type = 'Mn'
+
             new_line = line[:66].ljust(66) + "    +0.000 " + ad_type.ljust(2)
             lines.append(new_line)
     lines.append("ENDROOT")
@@ -91,7 +117,7 @@ def prepare_ligand(smiles, output_pdbqt):
 
     with open(output_pdbqt, 'w') as f:
         f.write("\n".join(lines))
-    return output_pdbqt
+    return output_pdbqt, uff_delta
 
 def smart_cavity_finder(pdb_file):
     coords = []
