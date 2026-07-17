@@ -237,8 +237,8 @@ if not selected_data.empty:
                 receptor_pdbqt = f"{st.session_state[f'pdb_id_{idx}']}.pdbqt"
                 interactions_data = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
 
-                if interactions_data and isinstance(interactions_data, list) and all(isinstance(d, dict) and "Receptor Residue" in d for d in interactions_data):
-                    interacting_res = list(set([d["Receptor Residue"] for d in interactions_data]))
+                if interactions_data is not None and not interactions_data.empty and "Receptor Residue" in interactions_data.columns:
+                    interacting_res = list(interactions_data["Receptor Residue"].unique())
                 else:
                     interacting_res = []
 
@@ -250,16 +250,22 @@ if not selected_data.empty:
                 st.write(f"Interacting receptor residues: {', '.join(interacting_res) if interacting_res else 'None'}")
 
                 st.markdown("### Interaction Analysis")
-                if interactions_data:
+                if interactions_data is not None and not interactions_data.empty:
                     int_col1, int_col2 = st.columns([1, 1])
                     with int_col1:
-                        st.dataframe(pd.DataFrame(interactions_data), hide_index=True)
+                        st.dataframe(interactions_data, hide_index=True)
                     with int_col2:
                         try:
                             mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
                             if mol:
-                                highlight_atoms = [int(d["Ligand Atom"].split(" ")[1]) - 1 for d in interactions_data]
-                                highlight_atoms = [a for a in highlight_atoms if a < mol.GetNumAtoms()]
+                                highlight_atoms = []
+                                for atom_str in interactions_data["Ligand Atom"].unique():
+                                    try:
+                                        atom_idx = int(atom_str.split(" ")[1]) - 1
+                                        if atom_idx < mol.GetNumAtoms():
+                                            highlight_atoms.append(atom_idx)
+                                    except ValueError:
+                                        pass
                                 img = Draw.MolToImage(mol, highlightAtoms=highlight_atoms, size=(400, 400))
                                 st.image(img)
                         except Exception as e:
