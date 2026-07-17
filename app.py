@@ -10,9 +10,13 @@ from docking_engine import fetch_receptor, prepare_ligand, smart_cavity_finder, 
 
 import parse_pdbqt
 import adme_profiler
+import logging
 
 
-
+def clear_interaction_state():
+    for key in list(st.session_state.keys()):
+        if key.startswith('interactions_df_') or key.startswith('highlight_atoms_'):
+            st.session_state[key] = None
 
 st.set_page_config(
     page_title="Kemet Dock",
@@ -49,7 +53,7 @@ st.header("Phase 1: Search Database")
 col1, col2 = st.columns(2)
 
 with col1:
-    search_by = st.selectbox("Search by", ["Common Name", "Protein Target"])
+    search_by = st.selectbox("Search by", ["Common Name", "Protein Target"], on_change=clear_interaction_state)
 
 with col2:
     if search_by == "Common Name":
@@ -57,7 +61,7 @@ with col2:
     else:
         options = df["Protein Target"].unique().tolist()
 
-    selected_option = st.selectbox(f"Select {search_by}", options)
+    selected_option = st.selectbox(f"Select {search_by}", options, on_change=clear_interaction_state)
 
 # Filter dataframe based on selection
 if search_by == "Common Name":
@@ -266,14 +270,25 @@ if not selected_data.empty:
                                         atom_idx = int(atom_str.split(" ")[1]) - 1
                                         if atom_idx < mol.GetNumAtoms():
                                             highlight_atoms.append(atom_idx)
+                                        else:
+                                            logging.warning(f"Atom index {atom_idx} out of bounds for molecule.")
                                     except ValueError:
                                         pass
+                                st.session_state[f'interactions_df_{idx}'] = interactions_df
+                                st.session_state[f'highlight_atoms_{idx}'] = highlight_atoms
                                 img = Draw.MolToImage(mol, highlightAtoms=highlight_atoms, size=(400, 400))
                                 st.image(img)
                         except Exception as e:
                             st.write("2D interaction map unavailable.")
                 else:
-                    st.write("No strong interactions found (<4.0 Å).")
+                    st.info('No significant interactions found for this phytochemical.')
+                    try:
+                        mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
+                        if mol:
+                            img = Draw.MolToImage(mol, size=(400, 400))
+                            st.image(img)
+                    except Exception as e:
+                        pass
 
                 # 3Dmol.js rendering
                 st.markdown("### 3D Interaction Viewer")
