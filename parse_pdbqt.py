@@ -45,12 +45,26 @@ def calc_interactions(ligand_lines, receptor_pdbqt):
             except ValueError:
                 pass
 
-    # Find interacting residues (< 4 Angstroms)
-    interacting = set()
-    for lx, ly, lz in ligand_atoms:
+    # Find interacting residues (< 4 Angstroms) and construct dicts
+    interactions = []
+    seen = set()
+    for i, (lx, ly, lz) in enumerate(ligand_atoms):
         for res, rx, ry, rz in receptor_atoms:
             dist = math.sqrt((lx-rx)**2 + (ly-ry)**2 + (lz-rz)**2)
             if dist < 4.0:
-                interacting.add(res)
+                key = (res, i)
+                if key not in seen:
+                    # Simple heuristic for bond type (this could be improved by parsing atom types)
+                    bond_type = "Hydrogen Bond" if dist < 3.2 else "Hydrophobic / VDW"
 
-    return list(interacting)
+                    interactions.append({
+                        "Receptor Residue": res,
+                        "Ligand Atom": f"Atom {i+1}",
+                        "Bond Distance (Å)": round(dist, 2),
+                        "Bond Type": bond_type
+                    })
+                    seen.add(key)
+
+    # Sort interactions by distance
+    interactions.sort(key=lambda x: x["Bond Distance (Å)"])
+    return interactions

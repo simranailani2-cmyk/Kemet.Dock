@@ -134,28 +134,54 @@ if not selected_data.empty:
 
         components.html(card_html, height=600, scrolling=True)
 
-        if st.button(f"Run Vina Docking for {row['Common Name']}", key=f"dock_{idx}"):
-            with st.spinner("Preparing docking pipeline..."):
-                pdb_id = row['PDB ID']
-                smiles = row['SMILES']
+        # Add a setup expander for Grid Box controls
+        with st.expander(f"Docking Setup for {row['Common Name']}", expanded=True):
+            pdb_id = row['PDB ID']
+            smiles = row['SMILES']
 
-                output_pdb = f"{pdb_id}.pdb"
-                st.write(f"Fetching receptor {pdb_id}...")
-                receptor_pdbqt = fetch_receptor(pdb_id, output_pdb)
+            if st.button(f"Initialize Receptor {pdb_id}", key=f"init_{idx}"):
+                with st.spinner(f"Fetching receptor {pdb_id} and calculating cavity..."):
+                    output_pdb = f"{pdb_id}.pdb"
+                    receptor_pdbqt = fetch_receptor(pdb_id, output_pdb)
+                    if receptor_pdbqt:
+                        center, dims = smart_cavity_finder(output_pdb)
+                        st.session_state[f'center_{idx}'] = center.tolist() if hasattr(center, 'tolist') else list(center)
+                        st.session_state[f'dims_{idx}'] = dims.tolist() if hasattr(dims, 'tolist') else list(dims)
+                        st.session_state[f'rec_pdbqt_{idx}'] = receptor_pdbqt
+                        st.session_state[f'setup_done_{idx}'] = True
+                    else:
+                        st.error("Failed to fetch receptor.")
 
-                st.write(f"Preparing ligand...")
-                ligand_pdbqt, uff_delta = prepare_ligand(smiles, "ligand.pdbqt")
+            if st.session_state.get(f'setup_done_{idx}', False):
+                st.markdown("**Grid Box Parameters**")
 
-                if receptor_pdbqt and ligand_pdbqt:
-                    st.write(f"Finding cavity...")
-                    center, dims = smart_cavity_finder(output_pdb)
+                center = st.session_state[f'center_{idx}']
+                dims = st.session_state[f'dims_{idx}']
 
-                    st.write(f"Running AutoDock Vina...")
-                    vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims)
+                col_cx, col_cy, col_cz = st.columns(3)
+                cx = col_cx.number_input("Center X", value=float(center[0]), format="%.3f", key=f"cx_{idx}")
+                cy = col_cy.number_input("Center Y", value=float(center[1]), format="%.3f", key=f"cy_{idx}")
+                cz = col_cz.number_input("Center Z", value=float(center[2]), format="%.3f", key=f"cz_{idx}")
 
-                    st.success("Docking complete!")
+                col_sx, col_sy, col_sz = st.columns(3)
+                sx = col_sx.number_input("Size X", value=float(dims[0]), format="%.3f", key=f"sx_{idx}")
+                sy = col_sy.number_input("Size Y", value=float(dims[1]), format="%.3f", key=f"sy_{idx}")
+                sz = col_sz.number_input("Size Z", value=float(dims[2]), format="%.3f", key=f"sz_{idx}")
 
-                    # Parse vina_output
+                if st.button(f"Run Vina Docking", key=f"dock_{idx}"):
+                    with st.spinner("Preparing docking pipeline..."):
+                        receptor_pdbqt = st.session_state[f'rec_pdbqt_{idx}']
+
+                        st.write(f"Preparing ligand...")
+                        ligand_pdbqt, uff_delta = prepare_ligand(smiles, "ligand.pdbqt")
+
+                        if receptor_pdbqt and ligand_pdbqt:
+                            st.write(f"Running AutoDock Vina...")
+                            vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, [cx, cy, cz], [sx, sy, sz])
+
+                            st.success("Docking complete!")
+
+                            # Parse vina_output
                     lines = vina_output.split('\n')
                     data = []
                     parsing = False
@@ -209,15 +235,36 @@ if not selected_data.empty:
                 # Metric Card
                 uff_delta = st.session_state.get(f'uff_delta_{idx}', 0.0)
                 receptor_pdbqt = f"{st.session_state[f'pdb_id_{idx}']}.pdbqt"
-                interacting_res = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
+                interactions_data = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
+                interacting_res = list(set([d["Receptor Residue"] for d in interactions_data]))
 
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Pose Affinity", f"{selected_mode_data['Affinity (kcal/mol)']} kcal/mol")
                 col2.metric("UFF Minimization Delta", f"{uff_delta:.2f} kcal/mol")
                 col3.metric("Interacting Residues", str(len(interacting_res)))
 
-                st.markdown("**Specific Interacting Amino Acid Residues:**")
-                st.write(", ".join(interacting_res))
+                st.markdown("### Specific Receptor-Ligand Interactions")
+                if interactions_data:
+                    int_col1, int_col2 = st.columns([1, 1])
+                    with int_col1:
+                        st.dataframe(pd.DataFrame(interactions_data), hide_index=True)
+                    with int_col2:
+                        try:
+                            # Attempt to highlight interacting atoms on 2D map
+                            mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
+                            if mol:
+                                highlight_atoms = [int(d["Ligand Atom"].split(" ")[1]) - 1 for d in interactions_data]
+                                # Filter valid atom indices
+                                highlight_atoms = [a for a in highlight_atoms if a < mol.GetNumAtoms()]
+                                img = Draw.MolToImage(mol, highlightAtoms=highlight_atoms, size=(400, 400))
+                                buffered = BytesIO()
+                                img.save(buffered, format="PNG")
+                                img_b64 = base64.b64encode(buffered.getvalue()).decode()
+                                st.markdown(f'<img src="data:image/png;base64,{img_b64}" style="width: 100%; border-radius: 8px; border: 1px solid #e1e4e8;"/>', unsafe_allow_html=True)
+                        except Exception as e:
+                            st.write("2D interaction map unavailable.")
+                else:
+                    st.write("No strong interactions found (<4.0 Å).")
 
                 # 3Dmol.js rendering
                 st.markdown("### 3D Interaction Viewer")

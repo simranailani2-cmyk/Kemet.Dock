@@ -38,6 +38,13 @@ def generate_variants(smiles):
 
     return list(variants)
 
+from rdkit.Chem import FilterCatalog
+
+# Initialize PAINS filter globally to avoid re-initialization
+params = FilterCatalog.FilterCatalogParams()
+params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.PAINS)
+pains_catalog = FilterCatalog.FilterCatalog(params)
+
 def get_admet(smiles):
     mol = Chem.MolFromSmiles(smiles)
     if not mol:
@@ -58,6 +65,10 @@ def get_admet(smiles):
     if hbd > 5: violations += 1
     if hba > 10: violations += 1
 
+    # Toxicity screening via PAINS structural alerts
+    alert_match = pains_catalog.GetFirstMatch(mol)
+    toxicity_alert = f"Alert: {alert_match.GetDescription()}" if alert_match else "Pass"
+
     return {
         "Molecular Weight": round(mw, 2),
         "LogP": round(logp, 2),
@@ -65,5 +76,6 @@ def get_admet(smiles):
         "H-Bond Donors": hbd,
         "H-Bond Acceptors": hba,
         "Max Ring Size": max_ring_size,
-        "Lipinski Violations": violations
+        "Lipinski Violations": violations,
+        "Toxicity Alerts": toxicity_alert
     }
