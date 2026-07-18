@@ -153,4 +153,12 @@ def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims):
         "--exhaustiveness", "1"
     ]
     res = subprocess.run(cmd, capture_output=True, text=True)
-    return res.stdout
+
+    out_file = "ligand_out.pdbqt"
+    if res.returncode != 0 or not os.path.exists(out_file) or os.path.getsize(out_file) == 0:
+        error_msg = res.stderr.strip() if res.stderr and res.stderr.strip() else res.stdout.strip()
+        if not error_msg:
+            error_msg = "Unknown Vina execution error."
+        return None, error_msg
+
+    return res.stdout, None
