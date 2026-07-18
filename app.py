@@ -41,13 +41,12 @@ st.markdown(
 )
 
 # Main Header Image and Title
-col_img, col_title = st.columns([1, 4])
-with col_img:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
-with col_title:
+col1, col2 = st.columns([5, 1])
+with col1:
     st.title("𓆎𓏏𓈇 Kemet Dock 𓆎𓏏𓈇")
-
-st.markdown("### Molecular Docking Portal")
+    st.markdown("### Molecular Docking Portal")
+with col2:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
 
 # Sidebar Images
 st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=150)
