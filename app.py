@@ -40,8 +40,19 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.title("Kemet Dock")
+# Main Header Image and Title
+col_img, col_title = st.columns([1, 4])
+with col_img:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
+with col_title:
+    st.title("𓆎𓏏𓈇 Kemet Dock 𓆎𓏏𓈇")
+
 st.markdown("### Molecular Docking Portal")
+
+# Sidebar Images
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=150)
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=150)
 
 @st.cache_data
 def load_data():
