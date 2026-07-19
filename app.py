@@ -20,6 +20,79 @@ def clear_interaction_state():
         if key.startswith('interactions_df_') or key.startswith('highlight_atoms_'):
             st.session_state[key] = None
 
+
+def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html):
+    html = f'''
+    <html>
+    <head>
+    <style>
+        body {{
+            font-family: sans-serif;
+            background-color: #f5f5dc; /* Egyptian sand/brown color palette */
+            color: #5c4033; /* Dark brown text */
+            padding: 20px;
+        }}
+        h1 {{
+            color: #8b4513; /* SaddleBrown */
+            text-align: center;
+        }}
+        .data-section {{
+            background-color: #ffffff;
+            border: 1px solid #d2b48c; /* Tan border */
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }}
+        th, td {{
+            border: 1px solid #d2b48c;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f0e68c; /* Khaki */
+        }}
+        .footer {{
+            text-align: right;
+            font-size: small;
+            color: gray;
+            margin-top: 30px;
+        }}
+    </style>
+    </head>
+    <body>
+        <h1>Kemet Dock: Egyptian Phytochemical Analysis</h1>
+
+        <div class="data-section">
+            <h2>Session Information</h2>
+            <p><strong>Active Phytochemical Name:</strong> {plant_name}</p>
+            <p><strong>SMILES String:</strong> {smiles}</p>
+            <p><strong>Receptor Name:</strong> {receptor_name}</p>
+            <p><strong>PDB ID:</strong> {pdb_id}</p>
+        </div>
+
+        <div class="data-section">
+            <h2>Bond Information</h2>
+            {interactions_df_html}
+        </div>
+
+        <div class="data-section">
+            <h2>ADMET Properties</h2>
+            {df_adme_html}
+        </div>
+
+        <div class="footer">
+            by Simran Ailani
+        </div>
+    </body>
+    </html>
+    '''
+    return html
+
 st.set_page_config(
     page_title="Kemet Dock",
     layout="wide",
@@ -413,3 +486,35 @@ if not selected_data.empty:
                             mol2 = Chem.MolFromSmiles(variants[0])
                             if mol2:
                                 st.image(Draw.MolToImage(mol2, size=(400, 400)), caption='Redesign Variant 1')
+                    # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
+                    st.markdown("---")
+
+                    # Ensure ADMET DataFrame exists before converting
+                    df_adme_html = df_adme.to_html(index=False) if 'df_adme' in locals() and not df_adme.empty else "<p>No ADMET properties available.</p>"
+
+                    # Ensure interactions DataFrame exists before converting
+                    interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
+                    interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
+
+                    report_html = generate_html_report(
+                        plant_name=row['Active Phytochemical'],
+                        smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
+                        receptor_name=row['Protein Target'],
+                        pdb_id=row['PDB ID'],
+                        df_adme_html=df_adme_html,
+                        interactions_df_html=interactions_df_html
+                    )
+
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        filename = f"kemet_dock_{row['Common Name'].replace(' ', '_')}_report.html"
+                        st.download_button(
+                            label='Download Report',
+                            data=report_html,
+                            file_name=filename,
+                            mime='text/html',
+                            key=f"download_btn_{idx}"
+                        )
+
+                    with col2:
+                        st.markdown("<div style='text-align: right; color: gray; font-size: small;'>by Simran Ailani</div>", unsafe_allow_html=True)
