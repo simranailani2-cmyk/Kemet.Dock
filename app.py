@@ -177,6 +177,8 @@ if not selected_data.empty:
 
             st.rerun()
 
+        st.header("Phase 2: Receptor & Grid Setup")
+
         # Add a setup expander for Grid Box controls
         with st.expander(f"Docking Setup for {row['Common Name']}", expanded=True):
             pdb_id = row['PDB ID']
@@ -210,6 +212,8 @@ if not selected_data.empty:
                 sx = col_sx.number_input("Size X", value=float(dims[0]), format="%.3f", key=f"sx_{idx}")
                 sy = col_sy.number_input("Size Y", value=float(dims[1]), format="%.3f", key=f"sy_{idx}")
                 sz = col_sz.number_input("Size Z", value=float(dims[2]), format="%.3f", key=f"sz_{idx}")
+
+                st.header("Phase 3: Docking Simulation & Results")
 
                 if st.button(f"Run Vina Docking", key=f"dock_{idx}"):
                     with st.spinner("Preparing docking pipeline..."):
