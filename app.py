@@ -133,9 +133,13 @@ with col2:
     st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
 
 # Sidebar Images
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=150)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", width=150)
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Thoth.svg", width=150)
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=150)
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=150)
 
 @st.cache_data
 def load_data():
