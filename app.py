@@ -22,6 +22,15 @@ def clear_interaction_state():
 
 
 def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html, interactions_var_df_html=None):
+    variant_section = ""
+    if interactions_var_df_html:
+        variant_section = f'''
+        <div class="data-section">
+            <h2>Redesign Variant Bond Information</h2>
+            {interactions_var_df_html}
+        </div>
+        '''
+
     html = f'''
     <html>
     <head>
@@ -79,10 +88,7 @@ def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html
             <h2>Bond Information</h2>
             {interactions_df_html}
         </div>
-        {f'''<div class="data-section">
-            <h2>Redesign Variant Bond Information</h2>
-            {interactions_var_df_html}
-        </div>''' if interactions_var_df_html else ""}
+        {variant_section}
 
         <div class="data-section">
             <h2>ADMET Properties</h2>
