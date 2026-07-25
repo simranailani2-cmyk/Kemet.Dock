@@ -132,14 +132,19 @@ with col1:
 with col2:
     st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
 
-# Sidebar Images
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", width=150)
+# Sidebar Images - 2x2 Grid Layout
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Thoth.svg", width=150)
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=150)
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=150)
+col_sb1, col_sb2 = st.sidebar.columns(2)
+
+with col_sb1:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", use_container_width=True)
+
+with col_sb2:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Thoth.svg", use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", use_container_width=True)
 
 @st.cache_data
 def load_data():
