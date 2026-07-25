@@ -124,19 +124,27 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Main Header Image and Title
-st.title("𓆎𓏏𓈇 Kemet Dock 𓆎𓏏𓈇")
-st.markdown("### Molecular Docking Portal")
 
-# Main Page Doodles - Far Left
-col_cat, col_phar, col_spacer = st.columns([1, 1, 10])
+# Unified Header: Full Title block on left, Cat and Pharaoh on the right, bottom-aligned
+col_title, col_spacer, col_cat, col_phar = st.columns(
+    [6, 1, 1, 1],
+    vertical_alignment="bottom"
+)
+
+with col_title:
+    # Main Header Image and Title
+    st.title("𓆎𓏏𓈇 Kemet Dock 𓆎𓏏𓈇")
+    st.markdown("### Molecular Docking Portal")
+
+# col_spacer remains empty to push the images to the right side
 
 with col_cat:
+    # Cat on the left side of the Pharaoh
     st.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=80)
 
 with col_phar:
+    # Pharaoh on the far right
     st.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=80)
-
 # Sidebar Images - Deities
 st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", width=150)
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
