@@ -486,6 +486,86 @@ if not selected_data.empty:
                             mol2 = Chem.MolFromSmiles(variants[0])
                             if mol2:
                                 st.image(Draw.MolToImage(mol2, size=(400, 400)), caption='Redesign Variant 1')
+
+                    if variants:
+                        st.markdown("---")
+                        st.header("Phase 4: Redesign Variant Docking")
+                        if st.button(f"Initiate Docking for Redesigned Variant", key=f"dock_var_{idx}"):
+                            try:
+                                ligand_var_pdbqt, uff_delta_var = prepare_ligand(variants[0], "ligand_var.pdbqt")
+                                vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
+
+                                lines_var = vina_output_var.split('\n')
+                                affinity_var = None
+                                parsing_var = False
+                                for line in lines_var:
+                                    if line.startswith('-----+------------+----------+----------'):
+                                        parsing_var = True
+                                        continue
+                                    if parsing_var:
+                                        parts_var = line.split()
+                                        if len(parts_var) >= 2 and parts_var[0].isdigit():
+                                            affinity_var = float(parts_var[1])
+                                            break
+
+                                poses_var = parse_pdbqt.extract_poses("ligand_var_out.pdbqt")
+                                if poses_var:
+                                    selected_pose_str_var = poses_var[0]
+                                    interactions_data_var = parse_pdbqt.calc_interactions(selected_pose_str_var.split('\n'), receptor_pdbqt)
+                                    interactions_df_var = pd.DataFrame(interactions_data_var) if interactions_data_var is not None else pd.DataFrame()
+
+                                    if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
+                                        interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
+                                    else:
+                                        interacting_res_var = []
+
+                                    col1_var, col2_var, col3_var = st.columns(3)
+                                    col1_var.metric("Pose Affinity", f"{affinity_var} kcal/mol" if affinity_var is not None else "N/A")
+                                    col2_var.metric("UFF Minimization Delta", f"{uff_delta_var:.2f} kcal/mol" if uff_delta_var else "N/A")
+                                    col3_var.metric("Interacting Residues", str(len(interacting_res_var)))
+
+                                    st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
+
+                                    if not interactions_df_var.empty:
+                                        st.dataframe(interactions_df_var, hide_index=True)
+                                    else:
+                                        st.info("No significant interactions found for the redesigned variant.")
+
+                                    with open(receptor_pdbqt, 'r') as f:
+                                        receptor_data_var = f.read()
+
+                                    viewer_html_var = f'''
+                                    <div id="container-var-{idx}" style="height: 500px !important; width: 100% !important; display: block; position: relative;" class="viewer_3Dmoljs"
+                                         data-backgroundcolor="0xffffff" data-style="stick"></div>
+                                    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+                                    <script>
+                                        var initViewer_var_{idx} = setInterval(function() {{
+                                            if (typeof $3Dmol !== 'undefined') {{
+                                                clearInterval(initViewer_var_{idx});
+                                                var viewer = $3Dmol.createViewer("container-var-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
+                                                var receptor_data = `{receptor_data_var}`;
+                                                var ligand_data = `{selected_pose_str_var}`;
+
+                                                viewer.addModel(receptor_data, "pdb");
+                                                viewer.setStyle({{model: 0}}, {{{receptor_style}: {{color: 'spectrum'}} }});
+
+                                                if ({'true' if show_surface else 'false'}) {{
+                                                    viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
+                                                }}
+
+                                                viewer.addModel(ligand_data, "pdb");
+                                                viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
+
+                                                viewer.zoomTo();
+                                                viewer.render();
+                                            }}
+                                        }}, 100);
+                                    </script>
+                                    '''
+                                    components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
+                            except Exception as e:
+                                st.error(f"Error during variant docking: {e}")
+
                     # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
                     st.markdown("---")
 
