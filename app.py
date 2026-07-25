@@ -21,7 +21,7 @@ def clear_interaction_state():
             st.session_state[key] = None
 
 
-def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html):
+def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html, interactions_var_df_html=None):
     html = f'''
     <html>
     <head>
@@ -79,6 +79,10 @@ def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html
             <h2>Bond Information</h2>
             {interactions_df_html}
         </div>
+        {f'''<div class="data-section">
+            <h2>Redesign Variant Bond Information</h2>
+            {interactions_var_df_html}
+        </div>''' if interactions_var_df_html else ""}
 
         <div class="data-section">
             <h2>ADMET Properties</h2>
@@ -557,6 +561,7 @@ if not selected_data.empty:
                                 uff_delta_var = st.session_state.get(f'uff_delta_var_{idx}', 0.0)
                                 interactions_data_var = parse_pdbqt.calc_interactions(selected_pose_str_var.split('\n'), receptor_pdbqt)
                                 interactions_df_var = pd.DataFrame(interactions_data_var) if interactions_data_var is not None else pd.DataFrame()
+                                st.session_state[f'interactions_var_df_{idx}'] = interactions_df_var
 
                                 if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
                                     interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
@@ -571,7 +576,7 @@ if not selected_data.empty:
                                 st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
 
                                 if not interactions_df_var.empty:
-                                    int_col1_var, int_col2_var = st.columns([1, 2])
+                                    int_col1_var, int_col2_var = st.columns([1, 1])
                                     with int_col1_var:
                                         st.dataframe(interactions_df_var, hide_index=True)
                                 else:
@@ -620,13 +625,17 @@ if not selected_data.empty:
                     interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
                     interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
 
+                    interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
+                    interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
+
                     report_html = generate_html_report(
                         plant_name=row['Active Phytochemical'],
                         smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
                         receptor_name=row['Protein Target'],
                         pdb_id=row['PDB ID'],
                         df_adme_html=df_adme_html,
-                        interactions_df_html=interactions_df_html
+                        interactions_df_html=interactions_df_html,
+                        interactions_var_df_html=interactions_var_df_html
                     )
 
                     col1, col2 = st.columns([1, 1])
