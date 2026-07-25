@@ -125,21 +125,21 @@ st.markdown(
 )
 
 # Main Header Image and Title
-col1, col2 = st.columns([5, 1])
+col1, col2, col3 = st.columns([4, 1, 1])
 with col1:
     st.title("𓆎𓏏𓈇 Kemet Dock 𓆎𓏏𓈇")
     st.markdown("### Molecular Docking Portal")
 with col2:
     st.image("https://upload.wikimedia.org/wikipedia/commons/b/ba/Egypt_Pyramid_Icon.svg", width=80)
+with col3:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=80)
 
-# Sidebar Images - Vertical Stack (Scaled Down)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", width=90)
+# Sidebar Images - 3 Deities
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/7/71/Seshat.svg", width=130)
 st.sidebar.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Thoth.svg", width=90)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Thoth.svg", width=130)
 st.sidebar.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=90)
-st.sidebar.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pharaoh_in_war.svg", width=90)
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/a/ae/Egyptian_Cat.svg", width=130)
 
 @st.cache_data
 def load_data():
