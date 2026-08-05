@@ -396,38 +396,9 @@ if not selected_data.empty:
 
                 st.markdown("### Interaction Analysis")
                 if not interactions_df.empty:
-                    int_col1, int_col2 = st.columns([1, 1])
-                    with int_col1:
-                        st.dataframe(interactions_df, hide_index=True)
-                    with int_col2:
-                        try:
-                            mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
-                            if mol:
-                                highlight_atoms = []
-                                for atom_str in interactions_df["Ligand Atom"].unique():
-                                    try:
-                                        atom_idx = int(atom_str.split(" ")[1]) - 1
-                                        if atom_idx < mol.GetNumAtoms():
-                                            highlight_atoms.append(atom_idx)
-                                        else:
-                                            logging.warning(f"Atom index {atom_idx} out of bounds for molecule.")
-                                    except ValueError:
-                                        pass
-                                st.session_state[f'interactions_df_{idx}'] = interactions_df
-                                st.session_state[f'highlight_atoms_{idx}'] = highlight_atoms
-                                img = Draw.MolToImage(mol, highlightAtoms=highlight_atoms, size=(400, 400))
-                                st.image(img)
-                        except Exception as e:
-                            st.write("2D interaction map unavailable.")
+                    st.dataframe(interactions_df, hide_index=True)
                 else:
                     st.info('No significant interactions found for this phytochemical.')
-                    try:
-                        mol = Chem.MolFromSmiles(st.session_state[f'smiles_{idx}'])
-                        if mol:
-                            img = Draw.MolToImage(mol, size=(400, 400))
-                            st.image(img)
-                    except Exception as e:
-                        pass
 
                 # 3Dmol.js rendering
                 st.markdown("### 3D Interaction Viewer")
@@ -514,24 +485,21 @@ if not selected_data.empty:
                         st.markdown("---")
                         st.header("Phase 4: Redesign Variant Docking")
 
-                        st.markdown("**Variant Grid Box Parameters**")
-                        center = st.session_state[f'center_{idx}']
-                        dims = st.session_state[f'dims_{idx}']
-
-                        col_cx_var, col_cy_var, col_cz_var = st.columns(3)
-                        cx_var = col_cx_var.number_input("Center X", value=float(center[0]), format="%.3f", key=f"cx_var_{idx}")
-                        cy_var = col_cy_var.number_input("Center Y", value=float(center[1]), format="%.3f", key=f"cy_var_{idx}")
-                        cz_var = col_cz_var.number_input("Center Z", value=float(center[2]), format="%.3f", key=f"cz_var_{idx}")
-
-                        col_sx_var, col_sy_var, col_sz_var = st.columns(3)
-                        sx_var = col_sx_var.number_input("Size X", value=float(dims[0]), format="%.3f", key=f"sx_var_{idx}")
-                        sy_var = col_sy_var.number_input("Size Y", value=float(dims[1]), format="%.3f", key=f"sy_var_{idx}")
-                        sz_var = col_sz_var.number_input("Size Z", value=float(dims[2]), format="%.3f", key=f"sz_var_{idx}")
+                        selected_variant = st.selectbox("Select Redesign Variant", variants, key=f"variant_select_{idx}")
 
                         if st.button(f"Initiate Docking for Redesigned Variant", key=f"dock_var_{idx}"):
                             try:
-                                ligand_var_pdbqt, uff_delta_var = prepare_ligand(variants[0], "ligand_var.pdbqt")
-                                vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx_var, cy_var, cz_var], [sx_var, sy_var, sz_var])
+                                center = st.session_state[f'center_{idx}']
+                                dims = st.session_state[f'dims_{idx}']
+                                cx = st.session_state.get(f"cx_{idx}", center[0])
+                                cy = st.session_state.get(f"cy_{idx}", center[1])
+                                cz = st.session_state.get(f"cz_{idx}", center[2])
+                                sx = st.session_state.get(f"sx_{idx}", dims[0])
+                                sy = st.session_state.get(f"sy_{idx}", dims[1])
+                                sz = st.session_state.get(f"sz_{idx}", dims[2])
+
+                                ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
+                                vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
 
                                 lines_var = vina_output_var.split('\n')
                                 data_var = []
