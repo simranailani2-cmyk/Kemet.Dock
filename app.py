@@ -445,11 +445,133 @@ if not selected_data.empty:
                 '''
                 components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html)}', height=550)
 
-                # Phase 2 and 3: ADMET & Design
-                st.markdown("---")
-                st.header("ADMET & Design")
                 smiles = st.session_state[f'smiles_{idx}']
                 variants = adme_profiler.generate_variants(smiles)
+
+                if variants:
+                    st.markdown("---")
+                    st.header("Phase 4: Redesign Variant Docking")
+
+                    selected_variant = st.selectbox("Select Redesign Variant", variants, key=f"variant_select_{idx}")
+
+                    if st.button(f"Initiate Docking for Redesigned Variant", key=f"dock_var_{idx}"):
+                        try:
+                            center = st.session_state[f'center_{idx}']
+                            dims = st.session_state[f'dims_{idx}']
+                            cx = st.session_state.get(f"cx_{idx}", center[0])
+                            cy = st.session_state.get(f"cy_{idx}", center[1])
+                            cz = st.session_state.get(f"cz_{idx}", center[2])
+                            sx = st.session_state.get(f"sx_{idx}", dims[0])
+                            sy = st.session_state.get(f"sy_{idx}", dims[1])
+                            sz = st.session_state.get(f"sz_{idx}", dims[2])
+
+                            ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
+                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
+
+                            lines_var = vina_output_var.split('\n')
+                            data_var = []
+                            parsing_var = False
+                            for line in lines_var:
+                                if line.startswith('-----+------------+----------+----------'):
+                                    parsing_var = True
+                                    continue
+                                if parsing_var:
+                                    parts_var = line.split()
+                                    if len(parts_var) == 4 and parts_var[0].isdigit():
+                                        try:
+                                            mode_var = int(parts_var[0])
+                                            affinity_var = float(parts_var[1])
+                                            rmsd_ub_var = float(parts_var[3])
+                                            data_var.append({
+                                                'Binding Mode': mode_var,
+                                                'Affinity (kcal/mol)': affinity_var,
+                                                'RMSD': rmsd_ub_var
+                                            })
+                                        except ValueError:
+                                            pass
+                                    elif len(parts_var) == 0 or 'Writing' in line:
+                                        break
+
+                            if data_var:
+                                st.session_state[f'docking_var_data_{idx}'] = data_var
+                                st.session_state[f'docking_var_done_{idx}'] = True
+                                st.session_state[f'uff_delta_var_{idx}'] = uff_delta_var
+                                st.success("Variant docking complete!")
+                            else:
+                                st.error("Could not parse Vina output for variant.")
+                        except Exception as e:
+                            st.error(f"Error during variant docking: {e}")
+
+                    if st.session_state.get(f'docking_var_done_{idx}', False):
+                        data_var = st.session_state[f'docking_var_data_{idx}']
+                        options_var = [f"Mode {d['Binding Mode']} (Affinity: {d['Affinity (kcal/mol)']} kcal/mol)" for d in data_var]
+                        selected_mode_str_var = st.selectbox("Variant Generated Poses", options_var, key=f"pose_select_var_{idx}")
+                        selected_idx_var = options_var.index(selected_mode_str_var)
+                        selected_mode_data_var = data_var[selected_idx_var]
+
+                        poses_var = parse_pdbqt.extract_poses("ligand_var_out.pdbqt")
+                        if poses_var and selected_idx_var < len(poses_var):
+                            selected_pose_str_var = poses_var[selected_idx_var]
+                            uff_delta_var = st.session_state.get(f'uff_delta_var_{idx}', 0.0)
+                            interactions_data_var = parse_pdbqt.calc_interactions(selected_pose_str_var.split('\n'), receptor_pdbqt)
+                            interactions_df_var = pd.DataFrame(interactions_data_var) if interactions_data_var is not None else pd.DataFrame()
+                            st.session_state[f'interactions_var_df_{idx}'] = interactions_df_var
+
+                            if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
+                                interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
+                            else:
+                                interacting_res_var = []
+
+                            col1_var, col2_var, col3_var = st.columns(3)
+                            col1_var.metric("Pose Affinity", f"{selected_mode_data_var['Affinity (kcal/mol)']} kcal/mol")
+                            col2_var.metric("UFF Minimization Delta", f"{uff_delta_var:.2f} kcal/mol")
+                            col3_var.metric("Interacting Residues", str(len(interacting_res_var)))
+
+                            st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
+
+                            if not interactions_df_var.empty:
+                                int_col1_var, int_col2_var = st.columns([1, 1])
+                                with int_col1_var:
+                                    st.dataframe(interactions_df_var, hide_index=True)
+                            else:
+                                st.info("No significant interactions found for the redesigned variant.")
+
+                            with open(receptor_pdbqt, 'r') as f:
+                                receptor_data_var = f.read()
+
+                            viewer_html_var = f'''
+                            <div id="container-var-{idx}" style="height: 500px !important; width: 100% !important; display: block; position: relative;" class="viewer_3Dmoljs"
+                                 data-backgroundcolor="0xffffff" data-style="stick"></div>
+                            <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+                            <script>
+                                var initViewer_var_{idx} = setInterval(function() {{
+                                    if (typeof $3Dmol !== 'undefined') {{
+                                        clearInterval(initViewer_var_{idx});
+                                        var viewer = $3Dmol.createViewer("container-var-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
+                                        var receptor_data = `{receptor_data_var}`;
+                                        var ligand_data = `{selected_pose_str_var}`;
+
+                                        viewer.addModel(receptor_data, "pdb");
+                                        viewer.setStyle({{model: 0}}, {{{receptor_style}: {{color: 'spectrum'}} }});
+
+                                        if ({'true' if show_surface else 'false'}) {{
+                                            viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
+                                        }}
+
+                                        viewer.addModel(ligand_data, "pdb");
+                                        viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
+
+                                        viewer.zoomTo();
+                                        viewer.render();
+                                    }}
+                                }}, 100);
+                            </script>
+                            '''
+                            components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
+
+                # Phase 3 relocated: ADMET & Design
+                st.markdown("---")
+                st.header("ADMET & Design")
 
                 orig_adme = adme_profiler.get_admet(smiles)
                 adme_data = []
@@ -458,10 +580,11 @@ if not selected_data.empty:
                     adme_data.append(orig_adme)
 
                 if variants:
-                    var_adme = adme_profiler.get_admet(variants[0])
-                    if var_adme:
-                        var_adme["Molecule"] = "Redesign Variant 1"
-                        adme_data.append(var_adme)
+                    for i, var_smiles in enumerate(variants):
+                        var_adme = adme_profiler.get_admet(var_smiles)
+                        if var_adme:
+                            var_adme["Molecule"] = f"Redesign Variant {i+1}"
+                            adme_data.append(var_adme)
 
                 if adme_data:
                     df_adme = pd.DataFrame(adme_data)
@@ -469,172 +592,39 @@ if not selected_data.empty:
                     df_adme = df_adme[cols]
                     st.dataframe(df_adme, hide_index=True)
 
-                    # Side-by-side visual comparison
-                    comp_col1, comp_col2 = st.columns(2)
-                    with comp_col1:
-                        mol1 = Chem.MolFromSmiles(smiles)
-                        if mol1:
-                            st.image(Draw.MolToImage(mol1, size=(400, 400)), caption='Original Phytochemical')
-                    with comp_col2:
-                        if variants:
-                            mol2 = Chem.MolFromSmiles(variants[0])
-                            if mol2:
-                                st.image(Draw.MolToImage(mol2, size=(400, 400)), caption='Redesign Variant 1')
+                # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
+                st.markdown("---")
 
-                    if variants:
-                        st.markdown("---")
-                        st.header("Phase 4: Redesign Variant Docking")
+                # Ensure ADMET DataFrame exists before converting
+                df_adme_html = df_adme.to_html(index=False) if 'df_adme' in locals() and not df_adme.empty else "<p>No ADMET properties available.</p>"
 
-                        selected_variant = st.selectbox("Select Redesign Variant", variants, key=f"variant_select_{idx}")
+                # Ensure interactions DataFrame exists before converting
+                interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
+                interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
 
-                        if st.button(f"Initiate Docking for Redesigned Variant", key=f"dock_var_{idx}"):
-                            try:
-                                center = st.session_state[f'center_{idx}']
-                                dims = st.session_state[f'dims_{idx}']
-                                cx = st.session_state.get(f"cx_{idx}", center[0])
-                                cy = st.session_state.get(f"cy_{idx}", center[1])
-                                cz = st.session_state.get(f"cz_{idx}", center[2])
-                                sx = st.session_state.get(f"sx_{idx}", dims[0])
-                                sy = st.session_state.get(f"sy_{idx}", dims[1])
-                                sz = st.session_state.get(f"sz_{idx}", dims[2])
+                interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
+                interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
 
-                                ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
-                                vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
+                report_html = generate_html_report(
+                    plant_name=row['Active Phytochemical'],
+                    smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
+                    receptor_name=row['Protein Target'],
+                    pdb_id=row['PDB ID'],
+                    df_adme_html=df_adme_html,
+                    interactions_df_html=interactions_df_html,
+                    interactions_var_df_html=interactions_var_df_html
+                )
 
-                                lines_var = vina_output_var.split('\n')
-                                data_var = []
-                                parsing_var = False
-                                for line in lines_var:
-                                    if line.startswith('-----+------------+----------+----------'):
-                                        parsing_var = True
-                                        continue
-                                    if parsing_var:
-                                        parts_var = line.split()
-                                        if len(parts_var) == 4 and parts_var[0].isdigit():
-                                            try:
-                                                mode_var = int(parts_var[0])
-                                                affinity_var = float(parts_var[1])
-                                                rmsd_ub_var = float(parts_var[3])
-                                                data_var.append({
-                                                    'Binding Mode': mode_var,
-                                                    'Affinity (kcal/mol)': affinity_var,
-                                                    'RMSD': rmsd_ub_var
-                                                })
-                                            except ValueError:
-                                                pass
-                                        elif len(parts_var) == 0 or 'Writing' in line:
-                                            break
-
-                                if data_var:
-                                    st.session_state[f'docking_var_data_{idx}'] = data_var
-                                    st.session_state[f'docking_var_done_{idx}'] = True
-                                    st.session_state[f'uff_delta_var_{idx}'] = uff_delta_var
-                                    st.success("Variant docking complete!")
-                                else:
-                                    st.error("Could not parse Vina output for variant.")
-                            except Exception as e:
-                                st.error(f"Error during variant docking: {e}")
-
-                        if st.session_state.get(f'docking_var_done_{idx}', False):
-                            data_var = st.session_state[f'docking_var_data_{idx}']
-                            options_var = [f"Mode {d['Binding Mode']} (Affinity: {d['Affinity (kcal/mol)']} kcal/mol)" for d in data_var]
-                            selected_mode_str_var = st.selectbox("Variant Generated Poses", options_var, key=f"pose_select_var_{idx}")
-                            selected_idx_var = options_var.index(selected_mode_str_var)
-                            selected_mode_data_var = data_var[selected_idx_var]
-
-                            poses_var = parse_pdbqt.extract_poses("ligand_var_out.pdbqt")
-                            if poses_var and selected_idx_var < len(poses_var):
-                                selected_pose_str_var = poses_var[selected_idx_var]
-                                uff_delta_var = st.session_state.get(f'uff_delta_var_{idx}', 0.0)
-                                interactions_data_var = parse_pdbqt.calc_interactions(selected_pose_str_var.split('\n'), receptor_pdbqt)
-                                interactions_df_var = pd.DataFrame(interactions_data_var) if interactions_data_var is not None else pd.DataFrame()
-                                st.session_state[f'interactions_var_df_{idx}'] = interactions_df_var
-
-                                if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
-                                    interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
-                                else:
-                                    interacting_res_var = []
-
-                                col1_var, col2_var, col3_var = st.columns(3)
-                                col1_var.metric("Pose Affinity", f"{selected_mode_data_var['Affinity (kcal/mol)']} kcal/mol")
-                                col2_var.metric("UFF Minimization Delta", f"{uff_delta_var:.2f} kcal/mol")
-                                col3_var.metric("Interacting Residues", str(len(interacting_res_var)))
-
-                                st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
-
-                                if not interactions_df_var.empty:
-                                    int_col1_var, int_col2_var = st.columns([1, 1])
-                                    with int_col1_var:
-                                        st.dataframe(interactions_df_var, hide_index=True)
-                                else:
-                                    st.info("No significant interactions found for the redesigned variant.")
-
-                                with open(receptor_pdbqt, 'r') as f:
-                                    receptor_data_var = f.read()
-
-                                viewer_html_var = f'''
-                                <div id="container-var-{idx}" style="height: 500px !important; width: 100% !important; display: block; position: relative;" class="viewer_3Dmoljs"
-                                     data-backgroundcolor="0xffffff" data-style="stick"></div>
-                                <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-                                <script>
-                                    var initViewer_var_{idx} = setInterval(function() {{
-                                        if (typeof $3Dmol !== 'undefined') {{
-                                            clearInterval(initViewer_var_{idx});
-                                            var viewer = $3Dmol.createViewer("container-var-{idx}", {{defaultcolors: $3Dmol.rasmolElementColors}});
-                                            var receptor_data = `{receptor_data_var}`;
-                                            var ligand_data = `{selected_pose_str_var}`;
-
-                                            viewer.addModel(receptor_data, "pdb");
-                                            viewer.setStyle({{model: 0}}, {{{receptor_style}: {{color: 'spectrum'}} }});
-
-                                            if ({'true' if show_surface else 'false'}) {{
-                                                viewer.addSurface($3Dmol.SurfaceType.VDW, {{opacity: 0.8, color: 'white'}}, {{model: 0}});
-                                            }}
-
-                                            viewer.addModel(ligand_data, "pdb");
-                                            viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
-
-                                            viewer.zoomTo();
-                                            viewer.render();
-                                        }}
-                                    }}, 100);
-                                </script>
-                                '''
-                                components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
-
-                    # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
-                    st.markdown("---")
-
-                    # Ensure ADMET DataFrame exists before converting
-                    df_adme_html = df_adme.to_html(index=False) if 'df_adme' in locals() and not df_adme.empty else "<p>No ADMET properties available.</p>"
-
-                    # Ensure interactions DataFrame exists before converting
-                    interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
-                    interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
-
-                    interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
-                    interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
-
-                    report_html = generate_html_report(
-                        plant_name=row['Active Phytochemical'],
-                        smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
-                        receptor_name=row['Protein Target'],
-                        pdb_id=row['PDB ID'],
-                        df_adme_html=df_adme_html,
-                        interactions_df_html=interactions_df_html,
-                        interactions_var_df_html=interactions_var_df_html
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    filename = f"kemet_dock_{row['Common Name'].replace(' ', '_')}_report.html"
+                    st.download_button(
+                        label='Download Report',
+                        data=report_html,
+                        file_name=filename,
+                        mime='text/html',
+                        key=f"download_btn_{idx}"
                     )
 
-                    col1, col2 = st.columns([1, 1])
-                    with col1:
-                        filename = f"kemet_dock_{row['Common Name'].replace(' ', '_')}_report.html"
-                        st.download_button(
-                            label='Download Report',
-                            data=report_html,
-                            file_name=filename,
-                            mime='text/html',
-                            key=f"download_btn_{idx}"
-                        )
-
-                    with col2:
-                        st.markdown("<div style='text-align: right; color: gray; font-size: small;'>by Simran Ailani</div>", unsafe_allow_html=True)
+                with col2:
+                    st.markdown("<div style='text-align: right; color: gray; font-size: small;'>by Simran Ailani</div>", unsafe_allow_html=True)
