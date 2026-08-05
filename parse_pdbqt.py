@@ -70,4 +70,7 @@ def calc_interactions(ligand_lines, receptor_pdbqt):
 
     # Sort interactions by distance
     interactions.sort(key=lambda x: x["Distance (Å)"])
-    return pd.DataFrame(interactions)
+    df = pd.DataFrame(interactions)
+    if not df.empty and "Receptor Residue" in df.columns:
+        df = df.drop_duplicates(subset=["Receptor Residue"], keep="first")
+    return df
