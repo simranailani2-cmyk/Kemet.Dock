@@ -77,6 +77,7 @@ def get_admet(smiles):
         "H-Bond Donors": hbd,
         "H-Bond Acceptors": hba,
         "Max Ring Size": max_ring_size,
-        "Lipinski Violations": ", ".join(violations) if violations else "0",
+        "Lipinski Violations": len(violations),
+        "Violation Details": violations,
         "Toxicity Alerts": toxicity_alert
     }

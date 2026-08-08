@@ -412,6 +412,15 @@ if not selected_data.empty:
 
                 show_surface = st.checkbox("Show Pocket Cavity Mesh", value=True, key=f"surf_{idx}")
 
+                interactions_js = ""
+                if not interactions_df.empty and "Receptor XYZ" in interactions_df.columns:
+                    for _, row_int in interactions_df.iterrows():
+                        rx, ry, rz = row_int["Receptor XYZ"]
+                        lx, ly, lz = row_int["Ligand XYZ"]
+                        color = "red" if row_int["Bond Type"] == "Polar/H-Bond" else "blue"
+                        interactions_js += f"viewer.addCylinder({{start:{{x:{rx}, y:{ry}, z:{rz}}}, end:{{x:{lx}, y:{ly}, z:{lz}}}, radius:0.1, dashed:true, color:'{color}'}});\n"
+                        interactions_js += f"viewer.addLabel('{row_int['Receptor Residue']}', {{position: {{x:{rx}, y:{ry}, z:{rz}}}, backgroundColor: 'black', backgroundOpacity: 0.8}});\n"
+
                 with open(receptor_pdbqt, 'r') as f:
                     receptor_data = f.read()
 
@@ -436,6 +445,10 @@ if not selected_data.empty:
 
                             viewer.addModel(ligand_data, "pdb");
                             viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
+
+                            try {{
+                                {interactions_js}
+                            }} catch(e) {{ console.error(e); }}
 
                             viewer.zoomTo();
                             viewer.render();
@@ -536,6 +549,15 @@ if not selected_data.empty:
                             else:
                                 st.info("No significant interactions found for the redesigned variant.")
 
+                            interactions_js_var = ""
+                            if not interactions_df_var.empty and "Receptor XYZ" in interactions_df_var.columns:
+                                for _, row_int in interactions_df_var.iterrows():
+                                    rx, ry, rz = row_int["Receptor XYZ"]
+                                    lx, ly, lz = row_int["Ligand XYZ"]
+                                    color = "red" if row_int["Bond Type"] == "Polar/H-Bond" else "blue"
+                                    interactions_js_var += f"viewer.addCylinder({{start:{{x:{rx}, y:{ry}, z:{rz}}}, end:{{x:{lx}, y:{ly}, z:{lz}}}, radius:0.1, dashed:true, color:'{color}'}});\n"
+                                    interactions_js_var += f"viewer.addLabel('{row_int['Receptor Residue']}', {{position: {{x:{rx}, y:{ry}, z:{rz}}}, backgroundColor: 'black', backgroundOpacity: 0.8}});\n"
+
                             with open(receptor_pdbqt, 'r') as f:
                                 receptor_data_var = f.read()
 
@@ -561,6 +583,10 @@ if not selected_data.empty:
                                         viewer.addModel(ligand_data, "pdb");
                                         viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
+                                        try {{
+                                            {interactions_js_var}
+                                        }} catch(e) {{ console.error(e); }}
+
                                         viewer.zoomTo();
                                         viewer.render();
                                     }}
@@ -569,62 +595,70 @@ if not selected_data.empty:
                             '''
                             components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
 
-                # Phase 3 relocated: ADMET & Design
-                st.markdown("---")
-                st.header("ADMET & Design")
+                if st.session_state.get(f'docking_var_done_{idx}', False):
+                    # Phase 5: ADMET & Design
+                    st.markdown("---")
+                    st.header("Phase 5: ADMET & Design")
 
-                orig_adme = adme_profiler.get_admet(smiles)
-                adme_data = []
-                if orig_adme:
-                    orig_adme["Molecule"] = "Original Phytochemical"
-                    adme_data.append(orig_adme)
+                    orig_adme = adme_profiler.get_admet(smiles)
+                    adme_data = []
+                    if orig_adme:
+                        orig_adme["Molecule"] = "Original Phytochemical"
+                        adme_data.append(orig_adme)
 
-                if variants:
-                    for i, var_smiles in enumerate(variants):
-                        var_adme = adme_profiler.get_admet(var_smiles)
-                        if var_adme:
-                            var_adme["Molecule"] = f"Redesign Variant {i+1}"
-                            adme_data.append(var_adme)
+                    if variants:
+                        for i, var_smiles in enumerate(variants):
+                            var_adme = adme_profiler.get_admet(var_smiles)
+                            if var_adme:
+                                var_adme["Molecule"] = f"Redesign Variant {i+1}"
+                                adme_data.append(var_adme)
 
-                if adme_data:
-                    df_adme = pd.DataFrame(adme_data)
-                    cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
-                    df_adme = df_adme[cols]
-                    st.dataframe(df_adme, hide_index=True)
+                    if adme_data:
+                        df_adme = pd.DataFrame(adme_data)
+                        cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
+                        df_adme = df_adme[cols]
 
-                # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
-                st.markdown("---")
+                        df_adme_display = df_adme.drop(columns=["Violation Details"], errors='ignore')
+                        st.dataframe(df_adme_display, hide_index=True)
 
-                # Ensure ADMET DataFrame exists before converting
-                df_adme_html = df_adme.to_html(index=False) if 'df_adme' in locals() and not df_adme.empty else "<p>No ADMET properties available.</p>"
+                        for _, row_adme in df_adme.iterrows():
+                            if row_adme.get("Violation Details"):
+                                details_str = ", ".join(row_adme["Violation Details"])
+                                st.warning(f"**{row_adme['Molecule']}** broken rules: {details_str}")
 
-                # Ensure interactions DataFrame exists before converting
-                interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
-                interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
+                    # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
+                    st.markdown("---")
 
-                interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
-                interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
+                    # Ensure ADMET DataFrame exists before converting
+                    df_adme_html = df_adme_display.to_html(index=False) if 'df_adme_display' in locals() and not df_adme_display.empty else "<p>No ADMET properties available.</p>"
 
-                report_html = generate_html_report(
-                    plant_name=row['Active Phytochemical'],
-                    smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
-                    receptor_name=row['Protein Target'],
-                    pdb_id=row['PDB ID'],
-                    df_adme_html=df_adme_html,
-                    interactions_df_html=interactions_df_html,
-                    interactions_var_df_html=interactions_var_df_html
-                )
+                    # Ensure interactions DataFrame exists before converting
+                    interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
+                    interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
 
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    filename = f"kemet_dock_{row['Common Name'].replace(' ', '_')}_report.html"
-                    st.download_button(
-                        label='Download Report',
-                        data=report_html,
-                        file_name=filename,
-                        mime='text/html',
-                        key=f"download_btn_{idx}"
+                    interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
+                    interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
+
+                    report_html = generate_html_report(
+                        plant_name=row['Active Phytochemical'],
+                        smiles=st.session_state.get(f'smiles_{idx}', row['SMILES']),
+                        receptor_name=row['Protein Target'],
+                        pdb_id=row['PDB ID'],
+                        df_adme_html=df_adme_html,
+                        interactions_df_html=interactions_df_html,
+                        interactions_var_df_html=interactions_var_df_html
                     )
 
-                with col2:
-                    st.markdown("<div style='text-align: right; color: gray; font-size: small;'>by Simran Ailani</div>", unsafe_allow_html=True)
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        filename = f"kemet_dock_{row['Common Name'].replace(' ', '_')}_report.html"
+                        st.download_button(
+                            label='Download Report',
+                            data=report_html,
+                            file_name=filename,
+                            mime='text/html',
+                            key=f"download_btn_{idx}"
+                        )
+
+                    with col2:
+                        st.markdown("<div style='text-align: right; color: gray; font-size: small;'>by Simran Ailani</div>", unsafe_allow_html=True)
