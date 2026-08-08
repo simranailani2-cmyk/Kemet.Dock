@@ -570,27 +570,34 @@ if not selected_data.empty:
                             components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
 
                 # Phase 3 relocated: ADMET & Design
-                st.markdown("---")
-                st.header("ADMET & Design")
+                if st.session_state.get(f'docking_var_done_{idx}', False):
+                    st.markdown("---")
+                    st.header("Phase 5: ADMET & Design")
 
-                orig_adme = adme_profiler.get_admet(smiles)
-                adme_data = []
-                if orig_adme:
-                    orig_adme["Molecule"] = "Original Phytochemical"
-                    adme_data.append(orig_adme)
+                    orig_adme = adme_profiler.get_admet(smiles)
+                    adme_data = []
+                    if orig_adme:
+                        orig_adme["Molecule"] = "Original Phytochemical"
+                        adme_data.append(orig_adme)
 
-                if variants:
-                    for i, var_smiles in enumerate(variants):
-                        var_adme = adme_profiler.get_admet(var_smiles)
-                        if var_adme:
-                            var_adme["Molecule"] = f"Redesign Variant {i+1}"
-                            adme_data.append(var_adme)
+                    if variants:
+                        for i, var_smiles in enumerate(variants):
+                            var_adme = adme_profiler.get_admet(var_smiles)
+                            if var_adme:
+                                var_adme["Molecule"] = f"Redesign Variant {i+1}"
+                                adme_data.append(var_adme)
 
-                if adme_data:
-                    df_adme = pd.DataFrame(adme_data)
-                    cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
-                    df_adme = df_adme[cols]
-                    st.dataframe(df_adme, hide_index=True)
+                    if adme_data:
+                        df_adme = pd.DataFrame(adme_data)
+                        cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule' and c != 'Violation Details']
+                        display_df = df_adme[cols]
+                        st.dataframe(display_df, hide_index=True)
+
+                        for data in adme_data:
+                            violation_details = data.get("Violation Details", [])
+                            if violation_details:
+                                details_str = ", ".join(violation_details)
+                                st.warning(f"⚠️ {data['Molecule']} Violations: {details_str}")
 
                 # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
                 st.markdown("---")
