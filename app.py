@@ -1,5 +1,6 @@
 import os
 import urllib.parse
+import json
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -437,6 +438,15 @@ if not selected_data.empty:
                             viewer.addModel(ligand_data, "pdb");
                             viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
+                            var interactingRes = {json.dumps(interacting_res)};
+                            interactingRes.forEach(function(res) {{
+                                var resiMatch = res.match(/-?[0-9]+/);
+                                if (resiMatch) {{
+                                    var resi = parseInt(resiMatch[0]);
+                                    viewer.addLabel(res, {{fontColor: 'black', backgroundColor: 'white', backgroundOpacity: 0.8}}, {{model: 0, resi: resi}});
+                                }}
+                            }});
+
                             viewer.zoomTo();
                             viewer.render();
                         }}
@@ -560,6 +570,15 @@ if not selected_data.empty:
 
                                         viewer.addModel(ligand_data, "pdb");
                                         viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
+
+                                        var interactingRes = {json.dumps(interacting_res_var)};
+                                        interactingRes.forEach(function(res) {{
+                                            var resiMatch = res.match(/-?[0-9]+/);
+                                            if (resiMatch) {{
+                                                var resi = parseInt(resiMatch[0]);
+                                                viewer.addLabel(res, {{fontColor: 'black', backgroundColor: 'white', backgroundOpacity: 0.8}}, {{model: 0, resi: resi}});
+                                            }}
+                                        }});
 
                                         viewer.zoomTo();
                                         viewer.render();
