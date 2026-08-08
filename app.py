@@ -1,6 +1,5 @@
 import os
 import urllib.parse
-import json
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -320,39 +319,8 @@ if not selected_data.empty:
                         ligand_pdbqt, uff_delta = prepare_ligand(smiles, "ligand.pdbqt")
 
                         if receptor_pdbqt and ligand_pdbqt:
-                            if os.path.exists("docking_poses.pdbqt"): os.remove("docking_poses.pdbqt")
                             st.write(f"Running AutoDock Vina...")
-                            progress_bar = st.progress(0, text="Starting docking...")
-                            import subprocess
-                            import os
-
-                            vina_path = os.path.abspath("./vina") if os.path.exists("./vina") else "vina"
-                            vina_command = [
-                                vina_path, "--receptor", str(receptor_pdbqt), "--ligand", str(ligand_pdbqt),
-                                "--center_x", str(cx), "--center_y", str(cy), "--center_z", str(cz),
-                                "--size_x", str(sx), "--size_y", str(sy), "--size_z", str(sz),
-                                "--exhaustiveness", "16", "--out", "docking_poses.pdbqt"
-                            ]
-
-                            process = subprocess.Popen(vina_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                            output_log, progress_count = [], 0
-
-                            while True:
-                                char = process.stdout.read(1).decode("utf-8", errors="ignore")
-                                if not char: break
-                                output_log.append(char)
-                                if char == '*':
-                                    progress_count += 1
-                                    if progress_bar:
-                                        pct = min(100, int((progress_count / 50) * 100))
-                                        progress_bar.progress(pct / 100.0, text=f"Exploring binding modes... {pct}%")
-
-                            process.wait()
-                            if process.returncode != 0:
-                                st.error("Engine failed!")
-
-                            vina_output = "".join(output_log)
-                            progress_bar.empty()
+                            vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, [cx, cy, cz], [sx, sy, sz])
 
                             st.success("Docking complete!")
 
@@ -402,7 +370,7 @@ if not selected_data.empty:
             selected_idx = options.index(selected_mode_str)
             selected_mode_data = data[selected_idx]
 
-            poses = parse_pdbqt.extract_poses("docking_poses.pdbqt")
+            poses = parse_pdbqt.extract_poses("ligand_out.pdbqt")
 
             if poses and selected_idx < len(poses):
                 selected_pose_str = poses[selected_idx]
@@ -415,10 +383,8 @@ if not selected_data.empty:
                 interactions_df = pd.DataFrame(interactions_data) if interactions_data is not None else pd.DataFrame()
 
                 if not interactions_df.empty and "Receptor Residue" in interactions_df.columns:
-                    interacting_res_data = interactions_df.to_dict("records")
                     interacting_res = list(interactions_df["Receptor Residue"].unique())
                 else:
-                    interacting_res_data = []
                     interacting_res = []
 
                 col1, col2, col3 = st.columns(3)
@@ -471,40 +437,6 @@ if not selected_data.empty:
                             viewer.addModel(ligand_data, "pdb");
                             viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
-
-                                var interactionsData = {json.dumps(interacting_res_data)};
-                                var interactingRes = {json.dumps(interacting_res)};
-                                interactionsData.forEach(function(interaction) {{
-                                    var res = interaction["Receptor Residue"];
-                                    var rx = interaction["Receptor XYZ"][0];
-                                    var ry = interaction["Receptor XYZ"][1];
-                                    var rz = interaction["Receptor XYZ"][2];
-                                    var lx = interaction["Ligand XYZ"][0];
-                                    var ly = interaction["Ligand XYZ"][1];
-                                    var lz = interaction["Ligand XYZ"][2];
-
-                                    // Add dashed line
-                                    viewer.addCylinder({{
-                                        start: {{x: lx, y: ly, z: lz}},
-                                        end: {{x: rx, y: ry, z: rz}},
-                                        radius: 0.1,
-                                        color: 'yellow',
-                                        dashed: true,
-                                        fromCap: 1,
-                                        toCap: 1
-                                    }});
-
-                                    // Anchor label to receptor atom
-                                    viewer.addLabel(res, {{
-                                        position: {{x: rx, y: ry, z: rz}},
-                                        fontColor: 'white',
-                                        backgroundColor: 'black',
-                                        backgroundOpacity: 0.5,
-                                        fontsize: 12
-                                    }});
-                                }});
-
-
                             viewer.zoomTo();
                             viewer.render();
                         }}
@@ -533,11 +465,8 @@ if not selected_data.empty:
                             sy = st.session_state.get(f"sy_{idx}", dims[1])
                             sz = st.session_state.get(f"sz_{idx}", dims[2])
 
-                            if os.path.exists("docking_var_poses.pdbqt"): os.remove("docking_var_poses.pdbqt")
                             ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
-                            progress_bar_var = st.progress(0, text="Starting docking for variant...")
-                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar_var, out_file="docking_var_poses.pdbqt")
-                            progress_bar_var.empty()
+                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
 
                             lines_var = vina_output_var.split('\n')
                             data_var = []
@@ -580,7 +509,7 @@ if not selected_data.empty:
                         selected_idx_var = options_var.index(selected_mode_str_var)
                         selected_mode_data_var = data_var[selected_idx_var]
 
-                        poses_var = parse_pdbqt.extract_poses("docking_var_poses.pdbqt")
+                        poses_var = parse_pdbqt.extract_poses("ligand_var_out.pdbqt")
                         if poses_var and selected_idx_var < len(poses_var):
                             selected_pose_str_var = poses_var[selected_idx_var]
                             uff_delta_var = st.session_state.get(f'uff_delta_var_{idx}', 0.0)
@@ -589,10 +518,8 @@ if not selected_data.empty:
                             st.session_state[f'interactions_var_df_{idx}'] = interactions_df_var
 
                             if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
-                                interacting_res_var_data = interactions_df_var.to_dict("records")
                                 interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
                             else:
-                                interacting_res_var_data = []
                                 interacting_res_var = []
 
                             col1_var, col2_var, col3_var = st.columns(3)
@@ -634,40 +561,6 @@ if not selected_data.empty:
                                         viewer.addModel(ligand_data, "pdb");
                                         viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
-
-                                        var interactionsData = {json.dumps(interacting_res_var_data)};
-                                        var interactingRes = {json.dumps(interacting_res_var)};
-                                        interactionsData.forEach(function(interaction) {{
-                                            var res = interaction["Receptor Residue"];
-                                            var rx = interaction["Receptor XYZ"][0];
-                                            var ry = interaction["Receptor XYZ"][1];
-                                            var rz = interaction["Receptor XYZ"][2];
-                                            var lx = interaction["Ligand XYZ"][0];
-                                            var ly = interaction["Ligand XYZ"][1];
-                                            var lz = interaction["Ligand XYZ"][2];
-
-                                            // Add dashed line
-                                            viewer.addCylinder({{
-                                                start: {{x: lx, y: ly, z: lz}},
-                                                end: {{x: rx, y: ry, z: rz}},
-                                                radius: 0.1,
-                                                color: 'yellow',
-                                                dashed: true,
-                                                fromCap: 1,
-                                                toCap: 1
-                                            }});
-
-                                            // Anchor label to receptor atom
-                                            viewer.addLabel(res, {{
-                                                position: {{x: rx, y: ry, z: rz}},
-                                                fontColor: 'white',
-                                                backgroundColor: 'black',
-                                                backgroundOpacity: 0.5,
-                                                fontsize: 12
-                                            }});
-                                        }});
-
-
                                         viewer.zoomTo();
                                         viewer.render();
                                     }}
@@ -677,34 +570,27 @@ if not selected_data.empty:
                             components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
 
                 # Phase 3 relocated: ADMET & Design
-                if st.session_state.get(f'docking_var_done_{idx}', False):
-                    st.markdown("---")
-                    st.header("Phase 5: ADMET & Design")
+                st.markdown("---")
+                st.header("ADMET & Design")
 
-                    orig_adme = adme_profiler.get_admet(smiles)
-                    adme_data = []
-                    if orig_adme:
-                        orig_adme["Molecule"] = "Original Phytochemical"
-                        adme_data.append(orig_adme)
+                orig_adme = adme_profiler.get_admet(smiles)
+                adme_data = []
+                if orig_adme:
+                    orig_adme["Molecule"] = "Original Phytochemical"
+                    adme_data.append(orig_adme)
 
-                    if variants:
-                        for i, var_smiles in enumerate(variants):
-                            var_adme = adme_profiler.get_admet(var_smiles)
-                            if var_adme:
-                                var_adme["Molecule"] = f"Redesign Variant {i+1}"
-                                adme_data.append(var_adme)
+                if variants:
+                    for i, var_smiles in enumerate(variants):
+                        var_adme = adme_profiler.get_admet(var_smiles)
+                        if var_adme:
+                            var_adme["Molecule"] = f"Redesign Variant {i+1}"
+                            adme_data.append(var_adme)
 
-                    if adme_data:
-                        df_adme = pd.DataFrame(adme_data)
-                        cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule' and c != 'Violation Details']
-                        display_df = df_adme[cols]
-                        st.dataframe(display_df, hide_index=True)
-
-                        for data in adme_data:
-                            violation_details = data.get("Violation Details", [])
-                            if violation_details:
-                                details_str = ", ".join(violation_details)
-                                st.warning(f"⚠️ {data['Molecule']} Violations: {details_str}")
+                if adme_data:
+                    df_adme = pd.DataFrame(adme_data)
+                    cols = ['Molecule'] + [c for c in df_adme.columns if c != 'Molecule']
+                    df_adme = df_adme[cols]
+                    st.dataframe(df_adme, hide_index=True)
 
                 # --- REPORT DOWNLOAD AND DEVELOPER SIGNATURE ---
                 st.markdown("---")
