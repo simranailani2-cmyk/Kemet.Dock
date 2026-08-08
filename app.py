@@ -384,8 +384,10 @@ if not selected_data.empty:
                 interactions_df = pd.DataFrame(interactions_data) if interactions_data is not None else pd.DataFrame()
 
                 if not interactions_df.empty and "Receptor Residue" in interactions_df.columns:
+                    interacting_res_data = interactions_df.to_dict("records")
                     interacting_res = list(interactions_df["Receptor Residue"].unique())
                 else:
+                    interacting_res_data = []
                     interacting_res = []
 
                 col1, col2, col3 = st.columns(3)
@@ -438,14 +440,39 @@ if not selected_data.empty:
                             viewer.addModel(ligand_data, "pdb");
                             viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
-                            var interactingRes = {json.dumps(interacting_res)};
-                            interactingRes.forEach(function(res) {{
-                                var resiMatch = res.match(/-?[0-9]+/);
-                                if (resiMatch) {{
-                                    var resi = parseInt(resiMatch[0]);
-                                    viewer.addLabel(res, {{fontColor: 'black', backgroundColor: 'white', backgroundOpacity: 0.8}}, {{model: 0, resi: resi}});
-                                }}
-                            }});
+
+                                var interactionsData = {json.dumps(interacting_res_data)};
+                                var interactingRes = {json.dumps(interacting_res)};
+                                interactionsData.forEach(function(interaction) {{
+                                    var res = interaction["Receptor Residue"];
+                                    var rx = interaction["Receptor XYZ"][0];
+                                    var ry = interaction["Receptor XYZ"][1];
+                                    var rz = interaction["Receptor XYZ"][2];
+                                    var lx = interaction["Ligand XYZ"][0];
+                                    var ly = interaction["Ligand XYZ"][1];
+                                    var lz = interaction["Ligand XYZ"][2];
+
+                                    // Add dashed line
+                                    viewer.addCylinder({{
+                                        start: {{x: lx, y: ly, z: lz}},
+                                        end: {{x: rx, y: ry, z: rz}},
+                                        radius: 0.1,
+                                        color: 'yellow',
+                                        dashed: true,
+                                        fromCap: 1,
+                                        toCap: 1
+                                    }});
+
+                                    // Anchor label to receptor atom
+                                    viewer.addLabel(res, {{
+                                        position: {{x: rx, y: ry, z: rz}},
+                                        fontColor: 'white',
+                                        backgroundColor: 'black',
+                                        backgroundOpacity: 0.5,
+                                        fontsize: 12
+                                    }});
+                                }});
+
 
                             viewer.zoomTo();
                             viewer.render();
@@ -528,8 +555,10 @@ if not selected_data.empty:
                             st.session_state[f'interactions_var_df_{idx}'] = interactions_df_var
 
                             if not interactions_df_var.empty and "Receptor Residue" in interactions_df_var.columns:
+                                interacting_res_var_data = interactions_df_var.to_dict("records")
                                 interacting_res_var = list(interactions_df_var["Receptor Residue"].unique())
                             else:
+                                interacting_res_var_data = []
                                 interacting_res_var = []
 
                             col1_var, col2_var, col3_var = st.columns(3)
@@ -571,14 +600,39 @@ if not selected_data.empty:
                                         viewer.addModel(ligand_data, "pdb");
                                         viewer.setStyle({{model: 1}}, {{{ligand_style}: {{colorscheme: 'greenCarbon'}} }});
 
+
+                                        var interactionsData = {json.dumps(interacting_res_var_data)};
                                         var interactingRes = {json.dumps(interacting_res_var)};
-                                        interactingRes.forEach(function(res) {{
-                                            var resiMatch = res.match(/-?[0-9]+/);
-                                            if (resiMatch) {{
-                                                var resi = parseInt(resiMatch[0]);
-                                                viewer.addLabel(res, {{fontColor: 'black', backgroundColor: 'white', backgroundOpacity: 0.8}}, {{model: 0, resi: resi}});
-                                            }}
+                                        interactionsData.forEach(function(interaction) {{
+                                            var res = interaction["Receptor Residue"];
+                                            var rx = interaction["Receptor XYZ"][0];
+                                            var ry = interaction["Receptor XYZ"][1];
+                                            var rz = interaction["Receptor XYZ"][2];
+                                            var lx = interaction["Ligand XYZ"][0];
+                                            var ly = interaction["Ligand XYZ"][1];
+                                            var lz = interaction["Ligand XYZ"][2];
+
+                                            // Add dashed line
+                                            viewer.addCylinder({{
+                                                start: {{x: lx, y: ly, z: lz}},
+                                                end: {{x: rx, y: ry, z: rz}},
+                                                radius: 0.1,
+                                                color: 'yellow',
+                                                dashed: true,
+                                                fromCap: 1,
+                                                toCap: 1
+                                            }});
+
+                                            // Anchor label to receptor atom
+                                            viewer.addLabel(res, {{
+                                                position: {{x: rx, y: ry, z: rz}},
+                                                fontColor: 'white',
+                                                backgroundColor: 'black',
+                                                backgroundOpacity: 0.5,
+                                                fontsize: 12
+                                            }});
                                         }});
+
 
                                         viewer.zoomTo();
                                         viewer.render();
