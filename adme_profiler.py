@@ -60,10 +60,19 @@ def get_admet(smiles):
     max_ring_size = max([len(r) for r in ri.AtomRings()]) if ri.AtomRings() else 0
 
     violations = []
-    if mw > 500: violations.append("Molecular Weight > 500")
-    if logp > 5: violations.append("LogP > 5")
-    if hbd > 5: violations.append("H-bond donors > 5")
-    if hba > 10: violations.append("H-bond acceptors > 10")
+    violation_details = []
+    if mw > 500:
+        violations.append("Molecular Weight > 500")
+        violation_details.append("Molecular Weight > 500 Da")
+    if logp > 5:
+        violations.append("LogP > 5")
+        violation_details.append("LogP > 5")
+    if hbd > 5:
+        violations.append("H-bond donors > 5")
+        violation_details.append("H-Bond Donors > 5")
+    if hba > 10:
+        violations.append("H-bond acceptors > 10")
+        violation_details.append("H-Bond Acceptors > 10")
 
     # Toxicity screening via PAINS structural alerts
     alert_match = pains_catalog.GetFirstMatch(mol)
@@ -78,5 +87,6 @@ def get_admet(smiles):
         "H-Bond Acceptors": hba,
         "Max Ring Size": max_ring_size,
         "Lipinski Violations": ", ".join(violations) if violations else "0",
+        "Violation Details": violation_details,
         "Toxicity Alerts": toxicity_alert
     }
