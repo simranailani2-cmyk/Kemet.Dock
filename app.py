@@ -322,7 +322,35 @@ if not selected_data.empty:
                         if receptor_pdbqt and ligand_pdbqt:
                             st.write(f"Running AutoDock Vina...")
                             progress_bar = st.progress(0, text="Starting docking...")
-                            vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar)
+                            import subprocess
+                            import os
+
+                            vina_path = os.path.abspath("./vina") if os.path.exists("./vina") else "vina"
+                            vina_command = [
+                                vina_path, "--receptor", str(receptor_pdbqt), "--ligand", str(ligand_pdbqt),
+                                "--center_x", str(cx), "--center_y", str(cy), "--center_z", str(cz),
+                                "--size_x", str(sx), "--size_y", str(sy), "--size_z", str(sz),
+                                "--exhaustiveness", "16", "--out", "docking_poses.pdbqt"
+                            ]
+
+                            process = subprocess.Popen(vina_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                            output_log, progress_count = [], 0
+
+                            while True:
+                                char = process.stdout.read(1).decode("utf-8", errors="ignore")
+                                if not char: break
+                                output_log.append(char)
+                                if char == '*':
+                                    progress_count += 1
+                                    if progress_bar:
+                                        pct = min(100, int((progress_count / 50) * 100))
+                                        progress_bar.progress(pct / 100.0, text=f"Exploring binding modes... {pct}%")
+
+                            process.wait()
+                            if process.returncode != 0:
+                                st.error("Engine failed!")
+
+                            vina_output = "".join(output_log)
                             progress_bar.empty()
 
                             st.success("Docking complete!")
