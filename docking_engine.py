@@ -137,7 +137,7 @@ def smart_cavity_finder(pdb_file):
 
     return [0.0, 0.0, 0.0], [20.0, 20.0, 20.0]
 
-def run_vina_docking(receptor_path, ligand_path, center, size, exhaustiveness=16, progress_bar=None):
+def run_vina_docking(receptor_path, ligand_path, center, size, exhaustiveness=16, progress_bar=None, out_file="docking_poses.pdbqt"):
     vina_path = os.path.abspath("./vina") if os.path.exists("./vina") else "vina"
     cmd = [
         vina_path,
@@ -150,7 +150,7 @@ def run_vina_docking(receptor_path, ligand_path, center, size, exhaustiveness=16
         "--size_y", str(size[1]),
         "--size_z", str(size[2]),
         "--exhaustiveness", str(exhaustiveness),
-        "--out", "docking_poses.pdbqt"
+        "--out", out_file
     ]
 
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

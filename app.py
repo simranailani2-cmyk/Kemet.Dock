@@ -320,6 +320,7 @@ if not selected_data.empty:
                         ligand_pdbqt, uff_delta = prepare_ligand(smiles, "ligand.pdbqt")
 
                         if receptor_pdbqt and ligand_pdbqt:
+                            if os.path.exists("docking_poses.pdbqt"): os.remove("docking_poses.pdbqt")
                             st.write(f"Running AutoDock Vina...")
                             progress_bar = st.progress(0, text="Starting docking...")
                             import subprocess
@@ -401,7 +402,7 @@ if not selected_data.empty:
             selected_idx = options.index(selected_mode_str)
             selected_mode_data = data[selected_idx]
 
-            poses = parse_pdbqt.extract_poses("ligand_out.pdbqt")
+            poses = parse_pdbqt.extract_poses("docking_poses.pdbqt")
 
             if poses and selected_idx < len(poses):
                 selected_pose_str = poses[selected_idx]
@@ -532,9 +533,10 @@ if not selected_data.empty:
                             sy = st.session_state.get(f"sy_{idx}", dims[1])
                             sz = st.session_state.get(f"sz_{idx}", dims[2])
 
+                            if os.path.exists("docking_var_poses.pdbqt"): os.remove("docking_var_poses.pdbqt")
                             ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
                             progress_bar_var = st.progress(0, text="Starting docking for variant...")
-                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar_var)
+                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar_var, out_file="docking_var_poses.pdbqt")
                             progress_bar_var.empty()
 
                             lines_var = vina_output_var.split('\n')
@@ -578,7 +580,7 @@ if not selected_data.empty:
                         selected_idx_var = options_var.index(selected_mode_str_var)
                         selected_mode_data_var = data_var[selected_idx_var]
 
-                        poses_var = parse_pdbqt.extract_poses("ligand_var_out.pdbqt")
+                        poses_var = parse_pdbqt.extract_poses("docking_var_poses.pdbqt")
                         if poses_var and selected_idx_var < len(poses_var):
                             selected_pose_str_var = poses_var[selected_idx_var]
                             uff_delta_var = st.session_state.get(f'uff_delta_var_{idx}', 0.0)
