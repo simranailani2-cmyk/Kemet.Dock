@@ -137,34 +137,39 @@ def smart_cavity_finder(pdb_file):
 
     return [0.0, 0.0, 0.0], [20.0, 20.0, 20.0]
 
-def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims, progress_bar=None):
-    vina_path = download_vina_executable()
-
+def run_vina_docking(receptor_path, ligand_path, center, size, exhaustiveness=16, progress_bar=None):
+    vina_path = os.path.abspath("./vina") if os.path.exists("./vina") else "vina"
     cmd = [
         vina_path,
-        "--receptor", receptor_pdbqt,
-        "--ligand", ligand_pdbqt,
+        "--receptor", str(receptor_path),
+        "--ligand", str(ligand_path),
         "--center_x", str(center[0]),
         "--center_y", str(center[1]),
         "--center_z", str(center[2]),
-        "--size_x", str(dims[0]),
-        "--size_y", str(dims[1]),
-        "--size_z", str(dims[2]),
-        "--exhaustiveness", "16"
+        "--size_x", str(size[0]),
+        "--size_y", str(size[1]),
+        "--size_z", str(size[2]),
+        "--exhaustiveness", str(exhaustiveness),
+        "--out", "docking_poses.pdbqt"
     ]
+
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output_log, progress_count, current_line = [], 0, ""
+    output_log = []
+    progress_count = 0
+
     while True:
         char = process.stdout.read(1).decode("utf-8", errors="ignore")
-        if not char: break
+        if not char:
+            break
         output_log.append(char)
         if char == '*':
             progress_count += 1
-            if progress_bar: progress_bar.progress(min(100, int((progress_count / 50) * 100)), text=f"Exploring binding modes... {min(100, int((progress_count / 50) * 100))}%")
-        elif char == '\n':
-            current_line = ""
-        else: current_line += char
+            if progress_bar is not None:
+                pct_float = min(1.0, progress_count / 50.0)
+                progress_bar.progress(pct_float, text=f"Exploring binding modes... {int(pct_float * 100)}%")
+
     process.wait()
     if process.returncode != 0:
-        raise Exception("Vina Engine Failed")
+        raise Exception(f"Vina calculation failed with return code {process.returncode}")
+
     return "".join(output_log)
