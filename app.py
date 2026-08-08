@@ -321,7 +321,9 @@ if not selected_data.empty:
 
                         if receptor_pdbqt and ligand_pdbqt:
                             st.write(f"Running AutoDock Vina...")
-                            vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, [cx, cy, cz], [sx, sy, sz])
+                            progress_bar = st.progress(0, text="Starting docking...")
+                            vina_output = run_vina_docking(receptor_pdbqt, ligand_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar)
+                            progress_bar.empty()
 
                             st.success("Docking complete!")
 
@@ -503,7 +505,9 @@ if not selected_data.empty:
                             sz = st.session_state.get(f"sz_{idx}", dims[2])
 
                             ligand_var_pdbqt, uff_delta_var = prepare_ligand(selected_variant, "ligand_var.pdbqt")
-                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz])
+                            progress_bar_var = st.progress(0, text="Starting docking for variant...")
+                            vina_output_var = run_vina_docking(receptor_pdbqt, ligand_var_pdbqt, [cx, cy, cz], [sx, sy, sz], progress_bar=progress_bar_var)
+                            progress_bar_var.empty()
 
                             lines_var = vina_output_var.split('\n')
                             data_var = []

@@ -137,7 +137,7 @@ def smart_cavity_finder(pdb_file):
 
     return [0.0, 0.0, 0.0], [20.0, 20.0, 20.0]
 
-def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims):
+def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims, progress_bar=None):
     vina_path = download_vina_executable()
 
     cmd = [
@@ -152,5 +152,19 @@ def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims):
         "--size_z", str(dims[2]),
         "--exhaustiveness", "16"
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return res.stdout
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output_log, progress_count, current_line = [], 0, ""
+    while True:
+        char = process.stdout.read(1).decode("utf-8", errors="ignore")
+        if not char: break
+        output_log.append(char)
+        if char == '*':
+            progress_count += 1
+            if progress_bar: progress_bar.progress(min(100, int((progress_count / 50) * 100)), text=f"Exploring binding modes... {min(100, int((progress_count / 50) * 100))}%")
+        elif char == '\n':
+            current_line = ""
+        else: current_line += char
+    process.wait()
+    if process.returncode != 0:
+        raise Exception("Vina Engine Failed")
+    return "".join(output_log)
