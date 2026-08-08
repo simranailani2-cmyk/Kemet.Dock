@@ -64,7 +64,9 @@ def calc_interactions(ligand_lines, receptor_pdbqt):
                         "Receptor Residue": res,
                         "Ligand Atom": f"Atom {i+1}",
                         "Distance (Å)": round(dist, 2),
-                        "Bond Type": bond_type
+                        "Bond Type": bond_type,
+                        "Receptor XYZ": (rx, ry, rz),
+                        "Ligand XYZ": (lx, ly, lz)
                     })
                     seen.add(key)
 
