@@ -21,16 +21,7 @@ def clear_interaction_state():
             st.session_state[key] = None
 
 
-def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html, interactions_var_df_html=None):
-    variant_section = ""
-    if interactions_var_df_html:
-        variant_section = f'''
-        <div class="data-section">
-            <h2>Redesign Variant Bond Information</h2>
-            {interactions_var_df_html}
-        </div>
-        '''
-
+def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html, lipinski_warnings_html=""):
     html = f'''
     <html>
     <head>
@@ -88,11 +79,11 @@ def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html
             <h2>Bond Information</h2>
             {interactions_df_html}
         </div>
-        {variant_section}
 
         <div class="data-section">
             <h2>ADMET Properties</h2>
             {df_adme_html}
+            {lipinski_warnings_html}
         </div>
 
         <div class="footer">
@@ -381,6 +372,7 @@ if not selected_data.empty:
                 interactions_data = parse_pdbqt.calc_interactions(selected_pose_str.split('\n'), receptor_pdbqt)
 
                 interactions_df = pd.DataFrame(interactions_data) if interactions_data is not None else pd.DataFrame()
+                st.session_state[f'interactions_df_{idx}'] = interactions_df
 
                 if not interactions_df.empty and "Receptor Residue" in interactions_df.columns:
                     interacting_res = list(interactions_df["Receptor Residue"].unique())
@@ -396,7 +388,8 @@ if not selected_data.empty:
 
                 st.markdown("### Interaction Analysis")
                 if not interactions_df.empty:
-                    st.dataframe(interactions_df, hide_index=True)
+                    interactions_display_df = interactions_df.drop(columns=["Receptor XYZ", "Ligand XYZ"], errors='ignore')
+                    st.dataframe(interactions_display_df, hide_index=True, use_container_width=True)
                 else:
                     st.info('No significant interactions found for this phytochemical.')
 
@@ -543,9 +536,8 @@ if not selected_data.empty:
                             st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
 
                             if not interactions_df_var.empty:
-                                int_col1_var, int_col2_var = st.columns([1, 1])
-                                with int_col1_var:
-                                    st.dataframe(interactions_df_var, hide_index=True)
+                                interactions_display_var = interactions_df_var.drop(columns=["Receptor XYZ", "Ligand XYZ"], errors='ignore')
+                                st.dataframe(interactions_display_var, hide_index=True, use_container_width=True)
                             else:
                                 st.info("No significant interactions found for the redesigned variant.")
 
@@ -632,12 +624,20 @@ if not selected_data.empty:
                     # Ensure ADMET DataFrame exists before converting
                     df_adme_html = df_adme_display.to_html(index=False) if 'df_adme_display' in locals() and not df_adme_display.empty else "<p>No ADMET properties available.</p>"
 
+                    lipinski_warnings_html = ""
+                    if 'df_adme' in locals() and not df_adme.empty:
+                        for _, row_adme in df_adme.iterrows():
+                            if row_adme.get("Violation Details"):
+                                details_str = ", ".join(row_adme["Violation Details"])
+                                lipinski_warnings_html += f"<p style='color: #8b4513; margin-top: 5px;'><strong>{row_adme['Molecule']}</strong> broken rules: {details_str}</p>"
+
                     # Ensure interactions DataFrame exists before converting
                     interactions_df = st.session_state.get(f'interactions_df_{idx}', None)
-                    interactions_df_html = interactions_df.to_html(index=False) if interactions_df is not None and not interactions_df.empty else "<p>No significant interactions found.</p>"
-
-                    interactions_var_df = st.session_state.get(f'interactions_var_df_{idx}', None)
-                    interactions_var_df_html = interactions_var_df.to_html(index=False) if interactions_var_df is not None and not interactions_var_df.empty else None
+                    if interactions_df is not None and not interactions_df.empty:
+                        interactions_df_clean = interactions_df.drop(columns=["Receptor XYZ", "Ligand XYZ"], errors='ignore')
+                        interactions_df_html = interactions_df_clean.to_html(index=False)
+                    else:
+                        interactions_df_html = "<p>No significant interactions found.</p>"
 
                     report_html = generate_html_report(
                         plant_name=row['Active Phytochemical'],
@@ -646,7 +646,7 @@ if not selected_data.empty:
                         pdb_id=row['PDB ID'],
                         df_adme_html=df_adme_html,
                         interactions_df_html=interactions_df_html,
-                        interactions_var_df_html=interactions_var_df_html
+                        lipinski_warnings_html=lipinski_warnings_html
                     )
 
                     col1, col2 = st.columns([1, 1])
