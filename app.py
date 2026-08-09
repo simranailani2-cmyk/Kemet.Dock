@@ -21,7 +21,7 @@ def clear_interaction_state():
             st.session_state[key] = None
 
 
-def generate_html_report(plant_name, smiles, receptor_name, pdb_id, df_adme_html, interactions_df_html, lipinski_warnings_html=""):
+def generate_html_report(plant_name, smiles, receptor_name, pdb_id, interactions_df_html, df_adme_html, lipinski_warnings_html=""):
     html = f'''
     <html>
     <head>
