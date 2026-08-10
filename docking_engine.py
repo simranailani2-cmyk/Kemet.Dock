@@ -152,6 +152,6 @@ def run_vina_docking(receptor_pdbqt, ligand_pdbqt, center, dims):
         "--size_z", str(dims[2]),
         "--exhaustiveness", "16",
         "--seed", "42"
-    ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return res.stdout
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return res.stdout
