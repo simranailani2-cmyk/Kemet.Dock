@@ -348,7 +348,8 @@ if not selected_data.empty:
                                 st.session_state[f'smiles_{idx}'] = smiles
                                 st.session_state[f'uff_delta_{idx}'] = uff_delta
                             else:
-                                st.error("Could not parse Vina output.")
+                                st.error("Could not parse Vina output. Here is Vina's hidden crash log:")
+                                st.code(vina_output)
                         else:
                             st.error("Failed to prepare receptor or ligand.")
 
