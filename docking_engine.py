@@ -63,7 +63,9 @@ def prepare_ligand(smiles, output_pdbqt):
         return None, 0.0
 
     mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, AllChem.ETKDGv3())
+    ps = AllChem.ETKDGv3()
+    ps.randomSeed = 42
+    AllChem.EmbedMolecule(mol, ps)
 
     # Memory-safe UFF minimization
     if mol.GetNumAtoms() <= 4000:
