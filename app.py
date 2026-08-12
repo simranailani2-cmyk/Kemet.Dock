@@ -243,7 +243,10 @@ if not selected_data.empty:
                 f'setup_done_{idx}', f'center_{idx}', f'dims_{idx}', f'rec_pdbqt_{idx}',
                 f'docking_done_{idx}', f'docking_data_{idx}', f'pdb_id_{idx}',
                 f'smiles_{idx}', f'uff_delta_{idx}', f'interactions_df_{idx}',
-                f'highlight_atoms_{idx}'
+                f'highlight_atoms_{idx}',
+                f'docking_done_var_{idx}', f'interactions_df_var_{idx}',
+                f'variant_docking_data_{idx}', f'pdb_id_var_{idx}',
+                f'smiles_var_{idx}', f'uff_delta_var_{idx}'
             ]
             for k in keys_to_clear:
                 if k in st.session_state:
