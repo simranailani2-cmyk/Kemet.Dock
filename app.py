@@ -458,10 +458,12 @@ if not selected_data.empty:
                 smiles = st.session_state[f'smiles_{idx}']
                 variants = adme_profiler.generate_variants(smiles)
 
-                if variants:
-                    st.markdown("---")
-                    st.header("Phase 4: Redesign Variant Docking")
+                st.markdown("---")
+                st.header("Phase 4: Redesign Variant Docking")
 
+                if not variants:
+                    st.info("No redesigned variant available for this phytochemical.")
+                else:
                     selected_variant = st.selectbox("Select Redesign Variant", variants, key=f"variant_select_{idx}")
 
                     if st.button(f"Initiate Docking for Redesigned Variant", key=f"dock_var_{idx}"):
@@ -591,7 +593,7 @@ if not selected_data.empty:
                             '''
                             components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(viewer_html_var)}', height=550)
 
-                if st.session_state.get(f'docking_var_done_{idx}', False):
+                if not variants or st.session_state.get(f'docking_var_done_{idx}', False):
                     # Phase 5: ADMET & Design
                     st.markdown("---")
                     st.header("Phase 5: ADMET & Design")
