@@ -238,34 +238,39 @@ if not selected_data.empty:
         components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(card_html)}', height=600, scrolling=True)
 
 
-        if st.button("Reset Environment", key=f"reset_{idx}"):
-            keys_to_clear = [
-                f'setup_done_{idx}', f'center_{idx}', f'dims_{idx}', f'rec_pdbqt_{idx}',
-                f'docking_done_{idx}', f'docking_data_{idx}', f'pdb_id_{idx}',
-                f'smiles_{idx}', f'uff_delta_{idx}', f'interactions_df_{idx}',
-                f'highlight_atoms_{idx}',
-                f'docking_done_var_{idx}', f'interactions_df_var_{idx}',
-                f'variant_docking_data_{idx}', f'pdb_id_var_{idx}',
-                f'smiles_var_{idx}', f'uff_delta_var_{idx}'
-            ]
-            for k in keys_to_clear:
-                if k in st.session_state:
-                    del st.session_state[k]
+       if st.button("Reset Environment", key=f"reset_{idx}"):
+                        keys_to_clear = [
+                            f'setup_done_{idx}', f'center_{idx}', f'dims_{idx}', f'rec_pdbqt_{idx}',
+                            f'docking_done_{idx}', f'docking_data_{idx}', f'pdb_id_{idx}',
+                            f'smiles_{idx}', f'uff_delta_{idx}', f'interactions_df_{idx}',
+                            f'highlight_atoms_{idx}',
+                            # --- FIXED PHASE 4 KEYS ---
+                            f'docking_var_done_{idx}', f'interactions_var_df_{idx}', 
+                            f'docking_var_data_{idx}', f'pdb_id_var_{idx}',
+                            f'smiles_var_{idx}', f'uff_delta_var_{idx}',
+                            f'pose_select_var_{idx}'
+                        ]
+                        for k in keys_to_clear:
+                            if k in st.session_state:
+                                del st.session_state[k]
 
-            temp_files = [
-                'ligand.pdbqt',
-                'ligand_out.pdbqt',
-                f"{row['PDB ID']}.pdb",
-                f"{row['PDB ID']}.pdbqt"
-            ]
-            for tf in temp_files:
-                if os.path.exists(tf):
-                    try:
-                        os.remove(tf)
-                    except OSError:
-                        pass
+                        temp_files = [
+                            'ligand.pdbqt',
+                            'ligand_out.pdbqt',
+                            # --- ADDED VARIANT FILES ---
+                            'ligand_var.pdbqt',
+                            'ligand_var_out.pdbqt',
+                            f"{row['PDB ID']}.pdb",
+                            f"{row['PDB ID']}.pdbqt"
+                        ]
+                        for tf in temp_files:
+                            if os.path.exists(tf):
+                                try:
+                                    os.remove(tf)
+                                except OSError:
+                                    pass
 
-            st.rerun()
+                        st.rerun()
 
         st.header("Phase 2: Receptor & Grid Setup")
 
