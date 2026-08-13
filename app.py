@@ -238,7 +238,7 @@ if not selected_data.empty:
         components.iframe(f'data:text/html;charset=utf-8,{urllib.parse.quote(card_html)}', height=600, scrolling=True)
 
 
-       if st.button("Reset Environment", key=f"reset_{idx}"):
+        if st.button("Reset Environment", key=f"reset_{idx}"):
                         keys_to_clear = [
                             f'setup_done_{idx}', f'center_{idx}', f'dims_{idx}', f'rec_pdbqt_{idx}',
                             f'docking_done_{idx}', f'docking_data_{idx}', f'pdb_id_{idx}',
