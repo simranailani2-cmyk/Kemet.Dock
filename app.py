@@ -544,6 +544,11 @@ if not selected_data.empty:
                             col2_var.metric("UFF Minimization Delta", f"{uff_delta_var:.2f} kcal/mol")
                             col3_var.metric("Interacting Residues", str(len(interacting_res_var)))
 
+                            st.markdown("### Variant 2D Structure")
+                            img_b64_var = get_image_base64(selected_variant)
+                            if img_b64_var:
+                                st.markdown(f'<img src="data:image/png;base64,{img_b64_var}" style="max-width: 300px; border-radius: 8px; margin-bottom: 15px;"/>', unsafe_allow_html=True)
+
                             st.write(f"Interacting receptor residues: {', '.join(interacting_res_var) if interacting_res_var else 'None'}")
 
                             if not interactions_df_var.empty:
