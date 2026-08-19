@@ -79,5 +79,5 @@ def get_admet(smiles):
         "Max Ring Size": max_ring_size,
         "Lipinski Violations": len(violations),
         "Violation Details": violations,
-        "Toxicity Alerts": toxicity_alert
+        "Structural Alerts (PAINS)": toxicity_alert
     }
